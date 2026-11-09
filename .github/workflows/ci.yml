@@ -1,0 +1,84 @@
+name: CI Pipeline
+
+on:
+  push:
+    branches:
+      - main
+      - 'feat/**'
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  backend-ci:
+    name: Backend CI (Typecheck & Vitest)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install dependencies
+        working-directory: backend
+        run: npm ci
+
+      - name: Typecheck
+        working-directory: backend
+        run: npm run typecheck
+
+      - name: Run automated tests
+        working-directory: backend
+        run: npm test
+
+  frontend-ci:
+    name: Frontend CI (Lint & Build)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Check if frontend exists
+        id: check_frontend
+        run: |
+          if [ -f "frontend/package.json" ]; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Setup Node.js
+        if: steps.check_frontend.outputs.exists == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        if: steps.check_frontend.outputs.exists == 'true'
+        working-directory: frontend
+        run: npm ci || npm install
+
+      - name: Typecheck and Build
+        if: steps.check_frontend.outputs.exists == 'true'
+        working-directory: frontend
+        run: npm run build
+
+  iac-lint:
+    name: AWS SAM Template Validation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup AWS SAM CLI
+        uses: aws-actions/setup-sam@v2
+        with:
+          use-installer: true
+
+      - name: Validate SAM Template
+        run: sam validate --lint
