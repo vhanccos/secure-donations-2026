@@ -15,9 +15,9 @@ Plataforma serverless de recaudación solidaria desarrollada bajo los principios
 
 | Integrante | Rol | Responsabilidad Principal | Rama Temática |
 | :--- | :--- | :--- | :--- |
-| **Vlad Hanco** (`vhanccos`) | Tech Lead & Cloud / DevOps Architect | Infraestructura AWS SAM, API Gateway PEP, Cognito PA, DynamoDB y Políticas IAM de mínimo privilegio | `feat/iac-devops-setup` |
+| **Vladimir Hancco** (`vhanccos`) | Tech Lead & Cloud / DevOps Architect | Infraestructura AWS SAM, API Gateway PEP, Cognito PA, DynamoDB y Políticas IAM de mínimo privilegio | `feat/iac-devops-setup` |
 | **Jeanpier Valera** (`jvalera@unsa.edu.pe`) | Security Engineer & CI/CD Specialist | GitHub Actions CI, validación de controles Zero Trust, suite de pruebas automatizadas y matrices de seguridad | `feat/ci-actions-workflow` |
-| **Jean Characo** (`jcharaco@unsa.edu.pe`) | Backend Engineer | Lambdas Node.js/TypeScript (PDP), protocolo de idempotencia atómica (`TransactWriteItems`), logging estructurado y validación Zod | `feat/backend-donations-core` |
+| **Jean Chara** (`jcharaco@unsa.edu.pe`) | Backend Engineer | Lambdas Node.js/TypeScript (PDP), protocolo de idempotencia atómica (`TransactWriteItems`), logging estructurado y validación Zod | `feat/backend-donations-core` |
 | **Gonzalo Layme** (`glaymem@unsa.edu.pe`) | Frontend Engineer | SPA React 19 + Tailwind CSS, gestión de JWT volátil en memoria (Zero Storage), UI con banner de simulación académica y MFA interactivo | `feat/frontend-spa` |
 
 ---
@@ -125,13 +125,13 @@ El desarrollo del proyecto simula un flujo colaborativo mediante ramas de caract
 main ───────────────────────────────────●──────────────────●──────────────────●
       \                                /                  /                  /
        └── feat/iac-devops-setup ─────┘                  /                  /
-            (Vlad Hanco - Infraestructura SAM)          /                  /
+            (Vladimir Hancco - Infraestructura SAM)     /                  /
                                                        /                  /
        └────────────────── feat/ci-actions-workflow ──┘                  /
                            (Jeanpier Valera - CI/CD & Testing)          /
                                                                        /
        └────────────────────────────────── feat/backend-donations-core ┘
-                                           (Jean Characo - Backend PDP & Core)
+                                           (Jean Chara - Backend PDP & Core)
 ```
 
 ---

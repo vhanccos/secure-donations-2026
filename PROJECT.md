@@ -52,7 +52,7 @@ Every feature from the Step 0 Survey is mapped to a milestone below.
 | 17 | Responsive Design & Accessibility | WCAG 2.2 AA compliant UI, 375px mobile responsiveness, keyboard navigable | M3 | Survey |
 | 18 | MFA Interactive UI Flow | TOTP challenge prompts during login for privileged administrative roles | M3 | Survey |
 | 19 | Git Repository Initialization | Local repo initialized and connected to `vhanccos/secure-donations-2026` | M4 | Survey |
-| 20 | Team Collaborative Flow | Feature branches, attributed commits for 4 members (Vlad, Jeanpier, Jean, Gonzalo), PRs | M4 | Survey |
+| 20 | Team Collaborative Flow | Feature branches, attributed commits for 4 members (Vladimir Hancco, Jean Chara, Jeanpier Valera, Gonzalo Layme), PRs | M4 | Survey |
 | 21 | GitHub Actions CI Pipeline | Automated workflow for linting, typechecking, tests, and build checks | M4 | Survey |
 | 22 | E2E Test Suite (Tiers 1-4) | Comprehensive test harness executing test scenarios T01 to T14 and edge cases | Test Track & M5 | Survey |
 | 23 | IAM Least Privilege Guardrail (T10) | Read-only Lambdas denied write permissions (`AccessDeniedException`) | M1 & M5 | Survey |
@@ -69,8 +69,8 @@ Every feature from the Step 0 Survey is mapped to a milestone below.
 | Test | E2E Testing Track | Independent requirement-driven test suite (Tiers 1-4, T01-T14), runner, `TEST_READY.md` | none | IN_PROGRESS |
 | M1 | Cloud Infrastructure & SAM Deployment | `template.yaml`, DynamoDB tables, Cognito, API Gateway PEP, deploy to AWS `us-east-2` | none | DONE |
 | M2 | Serverless Backend & Atomic Idempotency | TypeScript Lambdas (HU-01..09, 11), Zod schemas, TransactWriteItems, audit logging | M1 | DONE |
-| M3 | Frontend SPA & Browser Security | React 19, Tailwind CSS, in-memory tokens, simulation banner, MFA UI | M1 | PLANNED |
-| M4 | GitHub Repo & Collaborative Flow | GitHub repo `secure-donations-2026`, 4-member branches, commits, PRs, GitHub Actions CI | M1, M2, M3 | PLANNED |
+| M3 | Frontend SPA & Browser Security | React 19, Tailwind CSS, in-memory tokens, simulation banner, MFA UI | M1 | IN_PROGRESS |
+| M4 | GitHub Repo & Collaborative Flow | GitHub repo `secure-donations-2026`, 4-member branches, commits, PRs, GitHub Actions CI | M1, M2, M3 | IN_PROGRESS |
 | M5 | Final Milestone: E2E Verification & Adversarial Hardening | Pass 100% of E2E test suite (Tiers 1-4, T01-T14) + Tier 5 adversarial hardening | M2, M3, Test | PLANNED |
 | M6 | Technical Report & Typst Compilation | Update `INFORME_LAB04_ZERO_TRUST.typ` with real evidence screenshots, compile PDF | M4, M5 | PLANNED |
 
