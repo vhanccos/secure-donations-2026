@@ -107,13 +107,39 @@ npm run typecheck
 npm test
 ```
 
-### Resultados de Verificación
+### Resultados de Verificación Backend
 - **83 pruebas unitarias y de integración** cubriendo:
   - PDP (Policy Decision Point) y validación de claims JWT
   - Idempotencia atómica con DynamoDB `TransactWriteItems`
   - Prevención de BOLA/IDOR en donaciones privadas
   - Validaciones de payloads Zod y esquemas estrictos
   - Manejo estructurado de errores y respuestas HTTP (400, 401, 403, 404, 409)
+
+### Verificación Frontend Web SPA (React 19 + TypeScript + Vitest)
+
+El frontend cuenta con una suite completa de pruebas unitarias y de integración en Vitest:
+
+```bash
+# Navegar al directorio de frontend
+cd frontend
+
+# Instalar dependencias
+npm install
+
+# Ejecutar suite de pruebas
+npm test
+
+# Compilación de producción
+npm run build
+```
+
+### Resultados de Verificación Frontend
+- **23 pruebas unitarias y de integración** cubriendo:
+  - NIST SP 800-207 Zero Storage Purge Guard (tokens estrictamente en memoria volátil, nunca en `localStorage`/`sessionStorage`)
+  - Catálogo público de proyectos activos y cálculo de barras de progreso (HU-01, HU-02)
+  - Flujo interactivo de donaciones con simulación académica y banner permanente (HU-03, HU-05, HU-06)
+  - Autenticación multifactorial TOTP interactiva en 2 pasos para roles GESTOR y AUDITOR (HU-04, HU-11)
+  - Control de acceso por roles (RBAC) y vistas protegidas para Donante, Gestor y Auditor (HU-07, HU-08)
 
 ---
 
@@ -122,16 +148,19 @@ npm test
 El desarrollo del proyecto simula un flujo colaborativo mediante ramas de características fusionadas a `main`:
 
 ```text
-main ───────────────────────────────────●──────────────────●──────────────────●
-      \                                /                  /                  /
-       └── feat/iac-devops-setup ─────┘                  /                  /
-            (Vladimir Hancco - Infraestructura SAM)     /                  /
-                                                       /                  /
-       └────────────────── feat/ci-actions-workflow ──┘                  /
-                           (Jeanpier Valera - CI/CD & Testing)          /
-                                                                       /
-       └────────────────────────────────── feat/backend-donations-core ┘
-                                           (Jean Chara - Backend PDP & Core)
+main ───────────────────────────────────●──────────────────●──────────────────●──────────────────●
+      \                                /                  /                  /                  /
+       └── feat/iac-devops-setup ─────┘                  /                  /                  /
+            (Vladimir Hancco - Infraestructura SAM)     /                  /                  /
+                                                       /                  /                  /
+       └────────────────── feat/ci-actions-workflow ──┘                  /                  /
+                           (Jeanpier Valera - CI/CD & Testing)          /                  /
+                                                                       /                  /
+       └────────────────────────────────── feat/backend-donations-core ┘                  /
+                                           (Jean Chara - Backend PDP & Core)             /
+                                                                                        /
+       └────────────────────────────────────────────────────── feat/frontend-spa ──────┘
+                                                               (Gonzalo Layme - Frontend React 19 SPA)
 ```
 
 ---
