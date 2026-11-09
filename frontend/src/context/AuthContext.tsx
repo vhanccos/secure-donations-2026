@@ -15,6 +15,7 @@ import {
   buildCognitoAuthorizeUrl,
   exchangeOAuthCode,
 } from '../services/oauthPkce';
+import { AUTHENTIC_DEMO_TOKENS } from '../services/demoTokens';
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -225,45 +226,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setIsLoading(true);
     setAuthError(null);
 
-    const demoUsers: Record<Role, { email: string; sub: string; name: string }> = {
-      DONANTE: {
-        email: 'challenger_donante_a@aqp-solidaria.org',
-        sub: '419be540-0081-70f2-11e4-dfe2dc29491e',
-        name: 'Donante Demo UNSA',
-      },
-      GESTOR: {
-        email: 'challenger_gestor@aqp-solidaria.org',
-        sub: '619ba530-f031-700e-3bb7-5332854e27af',
-        name: 'Gestor de Proyectos AQP',
-      },
-      AUDITOR: {
-        email: 'challenger_auditor@aqp-solidaria.org',
-        sub: '819bf520-2011-708e-5cb7-7532854e48cf',
-        name: 'Auditor de Seguridad Zero Trust',
-      },
-    };
-
-    const target = demoUsers[role];
     try {
-      // In development / demo switcher: immediately seeds authentic JWT claims with required OAuth scopes
-      const header = btoa(JSON.stringify({ alg: 'HS256', typ: 'JWT' }));
-      const payloadObj = {
-        sub: target.sub,
-        email: target.email,
-        'cognito:groups': [role],
-        scope: 'openid email profile api/projects.write api/donations.write api/donations.read api/audit.read',
-        iss: 'https://cognito-idp.us-east-2.amazonaws.com/us-east-2_jSTLexY2N',
-        client_id: '6qc17dq9iqpoqq8e4sk5doqpnn',
-        token_use: 'access',
-        username: target.email,
-        amr: role === 'DONANTE' ? ['pwd'] : ['pwd', 'mfa'],
-        exp: Math.floor(Date.now() / 1000) + 3600,
-      };
-      const payload = btoa(JSON.stringify(payloadObj));
-      const sig = btoa('demo_signature_simulated');
-      const fakeToken = `${header}.${payload}.${sig}`;
-
-      setAuthenticatedSession(fakeToken, fakeToken);
+      const demoPrincipal = AUTHENTIC_DEMO_TOKENS[role];
+      if (demoPrincipal && demoPrincipal.accessToken) {
+        setAuthenticatedSession(demoPrincipal.accessToken, demoPrincipal.idToken);
+      } else {
+        throw new Error(`Credenciales demo no disponibles para el rol ${role}`);
+      }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Error en login demo';
       setAuthError(msg);
