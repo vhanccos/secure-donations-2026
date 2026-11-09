@@ -1,5 +1,6 @@
 #import "@preview/codly:1.3.0": *
 #import "@preview/codly-languages:0.1.6": *
+#import "@preview/cetz:0.3.4"
 
 // =========================================================================
 // PALETA CROMÁTICA INSTITUCIONAL & SISTEMA DE DISEÑO UNSA
@@ -198,6 +199,99 @@ Siguiendo los estándares de NIST SP 800-207 y CISA ZTMM v2.0 [4], el sistema de
 2. *Policy Enforcement Point (PEP):* Amazon API Gateway HTTP API v2 intercepta toda solicitud entrante como punto de control perimetral, validando la firma RSA, el issuer y los scopes OAuth requeridos (`donations:write`, etc.) antes de invocar cualquier cómputo.
 3. *Policy Decision Point (PDP):* Funciones AWS Lambda (Node.js 24 + TypeScript) ejecutan el módulo de autorización (`authz/pdp.ts`), evaluando los claims criptográficos (`sub`, `cognito:groups`) y las restricciones de negocio para prevenir vulnerabilidades de autorización a nivel de objeto (BOLA / OWASP API1:2023 [5]).
 
+#figure(
+  cetz.canvas({
+    import cetz.draw: *
+
+    // Contenedor general
+    rect((0, 0), (16, 7.5), stroke: 0.5pt + rgb("#CBD5E1"), fill: rgb("#F8FAFC"), radius: 4pt)
+    
+    // 1. Cliente SPA
+    rect((0.4, 4.2), (3.6, 6.8), stroke: 1.2pt + c-amber, fill: white, radius: 3pt)
+    content((2.0, 6.3), [*Cliente SPA (React)*], anchor: "center")
+    content((2.0, 5.2), align(center)[
+      #text(size: 6.5pt)[
+        • OAuth 2.0 + PKCE\
+        • Tokens en memoria\
+        • Purge Guard (No WebStorage)\
+        • Inyección de Bearer JWT
+      ]
+    ], anchor: "center")
+
+    // 2. PA: Cognito
+    rect((0.4, 0.7), (3.6, 3.3), stroke: 1.2pt + c-primary, fill: white, radius: 3pt)
+    content((2.0, 2.8), [*PA: Cognito User Pool*], anchor: "center")
+    content((2.0, 1.7), align(center)[
+      #text(size: 6.5pt)[
+        • Autenticación & MFA TOTP\
+        • Emisión JWT RS256 ($<= 15$ min)\
+        • Scopes OAuth & Grupos RBAC\
+        • Endpoint JWKS público
+      ]
+    ], anchor: "center")
+
+    // 3. PEP: API Gateway
+    rect((5.0, 3.0), (8.5, 6.8), stroke: 1.2pt + c-accent, fill: white, radius: 3pt)
+    content((6.75, 6.3), [*PEP: API Gateway v2*], anchor: "center")
+    content((6.75, 4.7), align(center)[
+      #text(size: 6.5pt)[
+        • Terminación TLS 1.3 / HSTS\
+        • JWT Authorizer (RS256)\
+        • Valida `iss`, `aud`, expiración\
+        • Valida *Custom Scopes*\
+        #text(fill: c-accent, weight: "bold")[Deniega 401 / 403 en el borde]
+      ]
+    ], anchor: "center")
+
+    // 4. PDP: Lambda Handlers
+    rect((9.8, 3.0), (12.8, 6.8), stroke: 1.2pt + c-teal, fill: white, radius: 3pt)
+    content((11.3, 6.3), [*PDP: AWS Lambda*], anchor: "center")
+    content((11.3, 4.7), align(center)[
+      #text(size: 6.5pt)[
+        • Validación Zod / Sanitización\
+        • Control Ownership (`sub`)\
+        • Prevención BOLA / IDOR\
+        • Idempotencia atómica\
+        • Log estructurado JSON
+      ]
+    ], anchor: "center")
+
+    // 5. PIP / Recursos: DynamoDB & CloudWatch
+    rect((13.6, 3.0), (15.6, 6.8), stroke: 1.2pt + rgb("#475569"), fill: white, radius: 3pt)
+    content((14.6, 6.3), [*Recursos*], anchor: "center")
+    content((14.6, 4.7), align(center)[
+      #text(size: 6.5pt)[
+        • *DynamoDB*\
+          - Projects\
+          - Donations\
+          - Idempotency\
+          - AuditEvents\
+        • *CloudWatch*
+      ]
+    ], anchor: "center")
+
+    // Flechas y Conexiones
+    line((2.0, 4.2), (2.0, 3.3), mark: (start: ">", end: ">"), stroke: 1pt + c-primary)
+    content((2.8, 3.75), [#text(size: 6pt, fill: c-primary)[1. PKCE / Tokens]], anchor: "center")
+
+    line((3.6, 5.5), (5.0, 5.5), mark: (end: ">"), stroke: 1pt + c-amber)
+    content((4.3, 5.8), [#text(size: 6pt, fill: rgb("#92400E"))[2. HTTPS / JWT]], anchor: "center")
+
+    line((5.0, 4.0), (3.6, 2.0), mark: (start: ">", end: ">"), stroke: (dash: "densely-dashed", paint: c-muted, thickness: 0.8pt))
+    content((4.8, 2.7), [#text(size: 5.5pt, fill: c-muted)[Valida JWKS]], anchor: "center")
+
+    line((8.5, 5.5), (9.8, 5.5), mark: (end: ">"), stroke: 1pt + c-teal)
+    content((9.15, 5.8), [#text(size: 6pt, fill: c-teal)[3. Invoca Lambda]], anchor: "center")
+
+    line((12.8, 5.5), (13.6, 5.5), mark: (end: ">"), stroke: 1pt + rgb("#475569"))
+    content((13.2, 5.8), [#text(size: 5.5pt, fill: rgb("#475569"))[4. Transact]], anchor: "center")
+
+    line((11.3, 3.0), (11.3, 1.5), (14.6, 1.5), (14.6, 3.0), mark: (end: ">"), stroke: (dash: "densely-dashed", paint: c-accent, thickness: 0.8pt))
+    content((13.0, 1.2), [#text(size: 6pt, fill: c-accent)[5. Telemetría y Auditoría Inmutable (`AuditEvents`)]], anchor: "center")
+  }),
+  caption: [Flujo lógico de transacciones y evaluación de políticas bajo el modelo Zero Trust (NIST SP 800-207: PA, PEP, PDP y PIP).]
+)
+
 // =========================================================================
 // 3. GOBERNANZA, SETUP AWS FREE TIER Y RECURSOS DESPLEGADOS
 // =========================================================================
@@ -299,7 +393,65 @@ La infraestructura en la nube está completamente desplegada y operativa, intera
 // =========================================================================
 = Desarrollo Colaborativo, Git y CI/CD
 
-El proyecto se estructuró bajo un monorepo modular versionado en GitHub (`secure-donations-2026`). Cada integrante desarrolló sus funcionalidades en ramas de características independientes con autoría verificable en el registro de commits:
+El proyecto se estructuró bajo un monorepo modular versionado en GitHub (`secure-donations-2026`). Cada integrante asumió un rol de especialización y desarrolló sus funcionalidades en ramas de características independientes con autoría verificable en el registro de commits:
+
+#figure(
+  cetz.canvas({
+    import cetz.draw: *
+
+    // Marco exterior
+    rect((0, 0), (16, 7.0), stroke: 0.5pt + rgb("#CBD5E1"), fill: rgb("#F8FAFC"), radius: 4pt)
+    
+    // Rol 1: Vladimir Hancco
+    rect((0.5, 3.8), (7.7, 6.5), stroke: 1.5pt + c-primary, fill: white, radius: 3pt)
+    content((4.1, 6.0), [*Vladimir Hancco* — Arquitectura Cloud & DevOps], anchor: "center")
+    content((4.1, 4.9), align(center)[
+      #text(size: 7pt)[
+        • Infraestructura como Código Serverless (AWS SAM CLI)\
+        • Configuración Cognito User Pool, Grupos y MFA TOTP\
+        • HTTP API Gateway v2, JWT Authorizer & Scopes PEP\
+        • Seguridad AWS Free Tier (\$1.00 USD Budget) y CI/CD
+      ]
+    ], anchor: "center")
+
+    // Rol 2: Jean Chara
+    rect((8.3, 3.8), (15.5, 6.5), stroke: 1.5pt + c-teal, fill: white, radius: 3pt)
+    content((11.9, 6.0), [*Jean Chara* — Backend & Lógica de Negocio], anchor: "center")
+    content((11.9, 4.9), align(center)[
+      #text(size: 7pt)[
+        • Handlers AWS Lambda en Node.js 24 + TypeScript\
+        • Transacciones atómicas e idempotencia (`TransactWrite`)\
+        • Esquemas de validación Zod y mitigación de inyección\
+        • Telemetría JSON estructurada y trazas en CloudWatch
+      ]
+    ], anchor: "center")
+
+    // Rol 3: Jeanpier Valera
+    rect((0.5, 0.5), (7.7, 3.2), stroke: 1.5pt + c-amber, fill: white, radius: 3pt)
+    content((4.1, 2.7), [*Jeanpier Valera* — Frontend SPA & Seguridad Cliente], anchor: "center")
+    content((4.1, 1.6), align(center)[
+      #text(size: 7pt)[
+        • SPA interactiva en React 19 + TypeScript + Tailwind CSS\
+        • Almacenamiento volátil de tokens en memoria (React Context)\
+        • Purga preventiva de WebStorage contra ataques XSS\
+        • Flujo PKCE OAuth 2.0 y modal interactivo para MFA TOTP
+      ]
+    ], anchor: "center")
+
+    // Rol 4: Gonzalo Layme
+    rect((8.3, 0.5), (15.5, 3.2), stroke: 1.5pt + c-accent, fill: white, radius: 3pt)
+    content((11.9, 2.7), [*Gonzalo Layme* — QA, Pruebas Negativas & Auditoría], anchor: "center")
+    content((11.9, 1.6), align(center)[
+      #text(size: 7pt)[
+        • Batería automatizada de pruebas T01 a T14 (55 tests)\
+        • Ensayos negativos: BOLA/IDOR, manipulación de tokens y scopes\
+        • Verificación de eventos inmutables en tabla `AuditEvents`\
+        • Validación de matrices de cumplimiento NIST SP 800-207
+      ]
+    ], anchor: "center")
+  }),
+  caption: [Distribución de roles, módulos técnicos y responsabilidades entre los 4 integrantes del equipo.]
+)
 
 #codly(header: [Comando — Verificación de Autoría y Ramas en Git])
 ```bash
