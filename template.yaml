@@ -1,0 +1,804 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  Plataforma de Donaciones Seguras (Fundacion AQP-SOLIDARIA)
+  Milestone 1 - Cloud Infrastructure & SAM Deployment
+  Region: us-east-2 | Architecture: Zero Trust (NIST SP 800-207)
+
+Parameters:
+  StageName:
+    Type: String
+    Default: academic
+    Description: Deployment stage environment (academic, staging, prod, dev)
+    AllowedValues:
+      - academic
+      - staging
+      - prod
+      - dev
+
+Conditions:
+  IsAcademicStage: !Equals [ !Ref StageName, "academic" ]
+
+Globals:
+  Function:
+    Timeout: 15
+    MemorySize: 256
+    Runtime: nodejs24.x
+    Architectures:
+      - x86_64
+    Environment:
+      Variables:
+        STAGE: !Ref StageName
+        PROJECTS_TABLE: !Ref ProjectsTable
+        DONATIONS_TABLE: !Ref DonationsTable
+        IDEMPOTENCY_TABLE: !Ref IdempotencyTable
+        AUDIT_EVENTS_TABLE: !Ref AuditEventsTable
+        USER_POOL_ID: !Ref FundacionUserPool
+        USER_POOL_CLIENT_ID: !Ref FundacionWebClient
+
+Resources:
+  # ==============================================================================
+  # 1. DynamoDB Tables (On-Demand / PAY_PER_REQUEST, Zero Trust Data Plane)
+  # ==============================================================================
+
+  ProjectsTable:
+    Type: AWS::DynamoDB::Table
+    DeletionPolicy: Delete
+    Properties:
+      TableName: Projects
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: projectId
+          AttributeType: S
+        - AttributeName: status
+          AttributeType: S
+        - AttributeName: createdAt
+          AttributeType: S
+      KeySchema:
+        - AttributeName: projectId
+          KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: status-createdAt-index
+          KeySchema:
+            - AttributeName: status
+              KeyType: HASH
+            - AttributeName: createdAt
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+      SSESpecification:
+        SSEEnabled: true
+
+  DonationsTable:
+    Type: AWS::DynamoDB::Table
+    DeletionPolicy: Delete
+    Properties:
+      TableName: Donations
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: donationId
+          AttributeType: S
+        - AttributeName: donorSub
+          AttributeType: S
+        - AttributeName: createdAt
+          AttributeType: S
+      KeySchema:
+        - AttributeName: donationId
+          KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: donorSub-createdAt-index
+          KeySchema:
+            - AttributeName: donorSub
+              KeyType: HASH
+            - AttributeName: createdAt
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+      SSESpecification:
+        SSEEnabled: true
+
+  IdempotencyTable:
+    Type: AWS::DynamoDB::Table
+    DeletionPolicy: Delete
+    Properties:
+      TableName: Idempotency
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: pk
+          AttributeType: S
+      KeySchema:
+        - AttributeName: pk
+          KeyType: HASH
+      TimeToLiveSpecification:
+        AttributeName: expiresAt
+        Enabled: true
+      SSESpecification:
+        SSEEnabled: true
+
+  AuditEventsTable:
+    Type: AWS::DynamoDB::Table
+    DeletionPolicy: Delete
+    Properties:
+      TableName: AuditEvents
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: eventType
+          AttributeType: S
+        - AttributeName: "timestamp#eventId"
+          AttributeType: S
+      KeySchema:
+        - AttributeName: eventType
+          KeyType: HASH
+        - AttributeName: "timestamp#eventId"
+          KeyType: RANGE
+      SSESpecification:
+        SSEEnabled: true
+
+  # ==============================================================================
+  # 2. Amazon Cognito User Pool, Client, Groups & Resource Server (Policy Administrator)
+  # ==============================================================================
+
+  FundacionUserPool:
+    Type: AWS::Cognito::UserPool
+    DeletionPolicy: Delete
+    Properties:
+      UserPoolName: FundacionUserPool
+      UsernameAttributes:
+        - email
+      AutoVerifiedAttributes:
+        - email
+      Policies:
+        PasswordPolicy:
+          MinimumLength: 8
+          RequireLowercase: true
+          RequireNumbers: true
+          RequireSymbols: true
+          RequireUppercase: true
+          TemporaryPasswordValidityDays: 7
+      MfaConfiguration: "OPTIONAL"
+      EnabledMfas:
+        - "SOFTWARE_TOKEN_MFA"
+      AccountRecoverySetting:
+        RecoveryMechanisms:
+          - Name: verified_email
+            Priority: 1
+
+  FundacionUserPoolDomain:
+    Type: AWS::Cognito::UserPoolDomain
+    Properties:
+      UserPoolId: !Ref FundacionUserPool
+      Domain: !Sub "aqp-solidaria-${AWS::AccountId}"
+
+  FundacionApiResourceServer:
+    Type: AWS::Cognito::UserPoolResourceServer
+    Properties:
+      UserPoolId: !Ref FundacionUserPool
+      Identifier: api
+      Name: FundacionApiResourceServer
+      Scopes:
+        - ScopeName: projects.write
+          ScopeDescription: Permiso para crear y publicar proyectos sociales
+        - ScopeName: donations.write
+          ScopeDescription: Permiso para registrar intenciones y confirmar donaciones
+        - ScopeName: donations.read
+          ScopeDescription: Permiso para consultar donaciones propias del donante
+        - ScopeName: audit.read
+          ScopeDescription: Permiso para consultar eventos de auditoria e integridad
+
+  FundacionWebClient:
+    Type: AWS::Cognito::UserPoolClient
+    DependsOn: FundacionApiResourceServer
+    Properties:
+      ClientName: FundacionWebClient
+      UserPoolId: !Ref FundacionUserPool
+      GenerateSecret: false
+      ExplicitAuthFlows:
+        - ALLOW_USER_SRP_AUTH
+        - ALLOW_REFRESH_TOKEN_AUTH
+        - ALLOW_USER_PASSWORD_AUTH
+      PreventUserExistenceErrors: ENABLED
+      AccessTokenValidity: 15
+      IdTokenValidity: 15
+      RefreshTokenValidity: 30
+      TokenValidityUnits:
+        AccessToken: minutes
+        IdToken: minutes
+        RefreshToken: days
+      AllowedOAuthFlowsUserPoolClient: true
+      AllowedOAuthFlows:
+        - code
+      AllowedOAuthScopes:
+        - openid
+        - email
+        - profile
+        - api/projects.write
+        - api/donations.write
+        - api/donations.read
+        - api/audit.read
+      CallbackURLs:
+        - http://localhost:5173
+        - http://localhost:3000
+        - https://oauth.pstmn.io/v1/callback
+      LogoutURLs:
+        - http://localhost:5173
+        - http://localhost:3000
+      SupportedIdentityProviders:
+        - COGNITO
+
+  DonanteGroup:
+    Type: AWS::Cognito::UserPoolGroup
+    Properties:
+      GroupName: DONANTE
+      Description: Rol Donante - Registro de intenciones y consulta de donaciones propias
+      Precedence: 3
+      UserPoolId: !Ref FundacionUserPool
+
+  GestorGroup:
+    Type: AWS::Cognito::UserPoolGroup
+    Properties:
+      GroupName: GESTOR
+      Description: Rol Gestor - Creacion y publicacion de proyectos sociales (MFA Requerido)
+      Precedence: 2
+      UserPoolId: !Ref FundacionUserPool
+
+  AuditorGroup:
+    Type: AWS::Cognito::UserPoolGroup
+    Properties:
+      GroupName: AUDITOR
+      Description: Rol Auditor - Inspeccion de eventos de auditoria y trazabilidad (MFA Requerido)
+      Precedence: 1
+      UserPoolId: !Ref FundacionUserPool
+
+  # ==============================================================================
+  # 3. Amazon API Gateway HTTP API v2 (Policy Enforcement Point - PEP)
+  # ==============================================================================
+
+  ApiAccessLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/v2/http-api/${AWS::StackName}-access-logs"
+      RetentionInDays: 14
+
+  ApiGatewayAccessLogsPolicy:
+    Type: AWS::Logs::ResourcePolicy
+    Properties:
+      PolicyName: !Sub "${AWS::StackName}-ApiAccessLogsPolicy"
+      PolicyDocument: !Sub |
+        {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "apigateway.amazonaws.com"
+              },
+              "Action": [
+                "logs:CreateLogStream",
+                "logs:PutLogEvents"
+              ],
+              "Resource": "${ApiAccessLogGroup.Arn}"
+            }
+          ]
+        }
+
+  HttpApi:
+    Type: AWS::Serverless::HttpApi
+    Properties:
+      StageName: !Ref StageName
+      CorsConfiguration:
+        AllowOrigins:
+          - "http://localhost:5173"
+          - "http://127.0.0.1:5173"
+          - "http://localhost:3000"
+          - "*"
+        AllowHeaders:
+          - "Authorization"
+          - "Content-Type"
+          - "Idempotency-Key"
+          - "X-Amz-Date"
+          - "X-Api-Key"
+          - "X-Amz-Security-Token"
+          - "X-Requested-With"
+        AllowMethods:
+          - "GET"
+          - "POST"
+          - "PATCH"
+          - "OPTIONS"
+          - "HEAD"
+        ExposeHeaders:
+          - "x-amzn-RequestId"
+          - "Date"
+        MaxAge: 300
+        AllowCredentials: false
+      Auth:
+        Authorizers:
+          CognitoJwtAuthorizer:
+            IdentitySource: "$request.header.Authorization"
+            JwtConfiguration:
+              issuer: !Sub "https://cognito-idp.${AWS::Region}.amazonaws.com/${FundacionUserPool}"
+              audience:
+                - !Ref FundacionWebClient
+      DefaultRouteSettings:
+        ThrottlingBurstLimit: 100
+        ThrottlingRateLimit: 50
+      AccessLogSettings:
+        DestinationArn: !GetAtt ApiAccessLogGroup.Arn
+        Format: '{"requestId":"$context.requestId","ip":"$context.identity.sourceIp","requestTime":"$context.requestTime","httpMethod":"$context.httpMethod","routeKey":"$context.routeKey","status":"$context.status","protocol":"$context.protocol","responseLength":"$context.responseLength","errorMessage":"$context.error.message"}'
+
+  # ==============================================================================
+  # 4. AWS Lambda Functions with Discrete IAM Roles & 14-day Log Retention
+  # ==============================================================================
+
+  # ----------------------------------------------------------------------------
+  # HU-01: List Projects (Public Read - Enforces RNF-HU-03 & T10 Least Privilege)
+  # ----------------------------------------------------------------------------
+  ListProjectsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-list-projects"
+      CodeUri: backend/
+      Handler: list-projects.handler
+      Description: "Public catalog listing (HU-01) - Read-only DynamoDB permissions"
+      Policies:
+        - Statement:
+            - Sid: DynamoDBReadOnlyProjects
+              Effect: Allow
+              Action:
+                - dynamodb:GetItem
+                - dynamodb:Query
+                - dynamodb:Scan
+              Resource:
+                - !GetAtt ProjectsTable.Arn
+                - !Sub "${ProjectsTable.Arn}/index/*"
+      Events:
+        PublicList:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Path: /v1/projects
+            Method: GET
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: es2022
+        Sourcemap: true
+        EntryPoints:
+          - src/projects/list-projects.ts
+
+  ListProjectsLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${AWS::StackName}-list-projects"
+      RetentionInDays: 14
+
+  # ----------------------------------------------------------------------------
+  # HU-02 & HU-09: Project Detail & Aggregated Statistics (Public Read)
+  # ----------------------------------------------------------------------------
+  GetProjectDetailFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-get-project-detail"
+      CodeUri: backend/
+      Handler: get-project.handler
+      Description: "Project detail and stats (HU-02, HU-09) - Read-only DynamoDB"
+      Policies:
+        - Statement:
+            - Sid: DynamoDBReadOnlyProjectDetail
+              Effect: Allow
+              Action:
+                - dynamodb:GetItem
+              Resource:
+                - !GetAtt ProjectsTable.Arn
+      Events:
+        GetDetail:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Path: /v1/projects/{projectId}
+            Method: GET
+        GetStats:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Path: /v1/projects/{projectId}/stats
+            Method: GET
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: es2022
+        Sourcemap: true
+        EntryPoints:
+          - src/projects/get-project.ts
+
+  GetProjectDetailLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${AWS::StackName}-get-project-detail"
+      RetentionInDays: 14
+
+  # ----------------------------------------------------------------------------
+  # HU-08: Create Project (Role: GESTOR)
+  # ----------------------------------------------------------------------------
+  CreateProjectFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-create-project"
+      CodeUri: backend/
+      Handler: create-project.handler
+      Description: "Create project draft (HU-08) - Scoped write permissions"
+      Policies:
+        - Statement:
+            - Sid: DynamoDBWriteProjects
+              Effect: Allow
+              Action:
+                - dynamodb:PutItem
+              Resource:
+                - !GetAtt ProjectsTable.Arn
+            - Sid: DynamoDBWriteAuditEvents
+              Effect: Allow
+              Action:
+                - dynamodb:PutItem
+              Resource:
+                - !GetAtt AuditEventsTable.Arn
+      Events:
+        CreateProject:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Path: /v1/projects
+            Method: POST
+            Auth:
+              Authorizer: CognitoJwtAuthorizer
+              AuthorizationScopes:
+                - api/projects.write
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: es2022
+        Sourcemap: true
+        EntryPoints:
+          - src/projects/create-project.ts
+
+  CreateProjectLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${AWS::StackName}-create-project"
+      RetentionInDays: 14
+
+  # ----------------------------------------------------------------------------
+  # HU-08: Publish Project (Role: GESTOR)
+  # ----------------------------------------------------------------------------
+  PublishProjectFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-publish-project"
+      CodeUri: backend/
+      Handler: publish-project.handler
+      Description: "Publish project (HU-08) - Scoped update permissions"
+      Policies:
+        - Statement:
+            - Sid: DynamoDBUpdateProjects
+              Effect: Allow
+              Action:
+                - dynamodb:GetItem
+                - dynamodb:UpdateItem
+              Resource:
+                - !GetAtt ProjectsTable.Arn
+            - Sid: DynamoDBWriteAuditEvents
+              Effect: Allow
+              Action:
+                - dynamodb:PutItem
+              Resource:
+                - !GetAtt AuditEventsTable.Arn
+      Events:
+        PublishProject:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Path: /v1/projects/{projectId}/publish
+            Method: PATCH
+            Auth:
+              Authorizer: CognitoJwtAuthorizer
+              AuthorizationScopes:
+                - api/projects.write
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: es2022
+        Sourcemap: true
+        EntryPoints:
+          - src/projects/publish-project.ts
+
+  PublishProjectLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${AWS::StackName}-publish-project"
+      RetentionInDays: 14
+
+  # ----------------------------------------------------------------------------
+  # HU-05: Create Donation Intention (Role: DONANTE)
+  # ----------------------------------------------------------------------------
+  CreateDonationFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-create-donation"
+      CodeUri: backend/
+      Handler: create-donation.handler
+      Description: "Register donation intention (HU-05) - Scoped TransactWrite permissions"
+      Policies:
+        - Statement:
+            - Sid: DynamoDBReadProjects
+              Effect: Allow
+              Action:
+                - dynamodb:GetItem
+              Resource:
+                - !GetAtt ProjectsTable.Arn
+            - Sid: DynamoDBManageIdempotency
+              Effect: Allow
+              Action:
+                - dynamodb:GetItem
+                - dynamodb:PutItem
+                - dynamodb:ConditionCheckItem
+              Resource:
+                - !GetAtt IdempotencyTable.Arn
+            - Sid: DynamoDBInsertDonation
+              Effect: Allow
+              Action:
+                - dynamodb:PutItem
+                - dynamodb:ConditionCheckItem
+              Resource:
+                - !GetAtt DonationsTable.Arn
+            - Sid: DynamoDBWriteAuditEvents
+              Effect: Allow
+              Action:
+                - dynamodb:PutItem
+              Resource:
+                - !GetAtt AuditEventsTable.Arn
+      Events:
+        CreateDonation:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Path: /v1/donations
+            Method: POST
+            Auth:
+              Authorizer: CognitoJwtAuthorizer
+              AuthorizationScopes:
+                - api/donations.write
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: es2022
+        Sourcemap: true
+        EntryPoints:
+          - src/donations/create-donation.ts
+
+  CreateDonationLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${AWS::StackName}-create-donation"
+      RetentionInDays: 14
+
+  # ----------------------------------------------------------------------------
+  # HU-06: Simulate Confirmation (Condition: IsAcademicStage Only)
+  # ----------------------------------------------------------------------------
+  SimulateDonationFunction:
+    Type: AWS::Serverless::Function
+    Condition: IsAcademicStage
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-simulate-donation"
+      CodeUri: backend/
+      Handler: simulate-donation.handler
+      Description: "Simulate donation confirmation (HU-06) - Academic Stage Only"
+      Policies:
+        - Statement:
+            - Sid: DynamoDBTransactSimulate
+              Effect: Allow
+              Action:
+                - dynamodb:GetItem
+                - dynamodb:UpdateItem
+                - dynamodb:ConditionCheckItem
+              Resource:
+                - !GetAtt DonationsTable.Arn
+                - !GetAtt ProjectsTable.Arn
+            - Sid: DynamoDBWriteAuditEvents
+              Effect: Allow
+              Action:
+                - dynamodb:PutItem
+              Resource:
+                - !GetAtt AuditEventsTable.Arn
+      Events:
+        SimulateDonation:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Path: /v1/donations/{donationId}/simulate
+            Method: POST
+            Auth:
+              Authorizer: CognitoJwtAuthorizer
+              AuthorizationScopes:
+                - api/donations.write
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: es2022
+        Sourcemap: true
+        EntryPoints:
+          - src/donations/simulate-donation.ts
+
+  SimulateDonationLogGroup:
+    Type: AWS::Logs::LogGroup
+    Condition: IsAcademicStage
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${AWS::StackName}-simulate-donation"
+      RetentionInDays: 14
+
+  # ----------------------------------------------------------------------------
+  # HU-07: Get My Donations (Role: DONANTE Private History)
+  # ----------------------------------------------------------------------------
+  GetMyDonationsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-get-my-donations"
+      CodeUri: backend/
+      Handler: get-my-donations.handler
+      Description: "Donor personal history (HU-07) - Read-only query permissions"
+      Policies:
+        - Statement:
+            - Sid: DynamoDBQueryMyDonations
+              Effect: Allow
+              Action:
+                - dynamodb:Query
+              Resource:
+                - !GetAtt DonationsTable.Arn
+                - !Sub "${DonationsTable.Arn}/index/*"
+      Events:
+        GetMyDonations:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Path: /v1/donations/me
+            Method: GET
+            Auth:
+              Authorizer: CognitoJwtAuthorizer
+              AuthorizationScopes:
+                - api/donations.read
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: es2022
+        Sourcemap: true
+        EntryPoints:
+          - src/donations/get-my-donations.ts
+
+  GetMyDonationsLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${AWS::StackName}-get-my-donations"
+      RetentionInDays: 14
+
+  # ----------------------------------------------------------------------------
+  # HU-10: Get Audit Events (Role: AUDITOR Private Query)
+  # ----------------------------------------------------------------------------
+  GetAuditEventsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-get-audit-events"
+      CodeUri: backend/
+      Handler: get-audit-events.handler
+      Description: "Audit events query (HU-10) - Read-only query permissions"
+      Policies:
+        - Statement:
+            - Sid: DynamoDBReadAuditEvents
+              Effect: Allow
+              Action:
+                - dynamodb:GetItem
+                - dynamodb:Query
+                - dynamodb:Scan
+              Resource:
+                - !GetAtt AuditEventsTable.Arn
+                - !Sub "${AuditEventsTable.Arn}/index/*"
+      Events:
+        GetAudit:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Path: /v1/audit
+            Method: GET
+            Auth:
+              Authorizer: CognitoJwtAuthorizer
+              AuthorizationScopes:
+                - api/audit.read
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: es2022
+        Sourcemap: true
+        EntryPoints:
+          - src/audit/get-audit-events.ts
+
+  GetAuditEventsLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${AWS::StackName}-get-audit-events"
+      RetentionInDays: 14
+
+# ==============================================================================
+# Outputs (CloudFormation Stack Exports for Verification & Downstream Milestones)
+# ==============================================================================
+Outputs:
+  Region:
+    Description: AWS Region
+    Value: !Ref AWS::Region
+
+  Stage:
+    Description: Current deployment stage
+    Value: !Ref StageName
+
+  ProjectsTableName:
+    Description: DynamoDB Projects Table Name
+    Value: !Ref ProjectsTable
+    Export:
+      Name: !Sub "${AWS::StackName}-ProjectsTableName"
+
+  DonationsTableName:
+    Description: DynamoDB Donations Table Name
+    Value: !Ref DonationsTable
+    Export:
+      Name: !Sub "${AWS::StackName}-DonationsTableName"
+
+  IdempotencyTableName:
+    Description: DynamoDB Idempotency Table Name
+    Value: !Ref IdempotencyTable
+    Export:
+      Name: !Sub "${AWS::StackName}-IdempotencyTableName"
+
+  AuditEventsTableName:
+    Description: DynamoDB AuditEvents Table Name
+    Value: !Ref AuditEventsTable
+    Export:
+      Name: !Sub "${AWS::StackName}-AuditEventsTableName"
+
+  UserPoolId:
+    Description: Cognito User Pool ID
+    Value: !Ref FundacionUserPool
+    Export:
+      Name: !Sub "${AWS::StackName}-UserPoolId"
+
+  UserPoolArn:
+    Description: Cognito User Pool ARN
+    Value: !GetAtt FundacionUserPool.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-UserPoolArn"
+
+  UserPoolClientId:
+    Description: Cognito User Pool Client ID (Web SPA)
+    Value: !Ref FundacionWebClient
+    Export:
+      Name: !Sub "${AWS::StackName}-UserPoolClientId"
+
+  UserPoolDomainUrl:
+    Description: Cognito User Pool Hosted UI / OAuth Domain
+    Value: !Sub "https://${FundacionUserPoolDomain}.auth.${AWS::Region}.amazoncognito.com"
+    Export:
+      Name: !Sub "${AWS::StackName}-UserPoolDomainUrl"
+
+  HttpApiId:
+    Description: HTTP API Gateway ID
+    Value: !Ref HttpApi
+    Export:
+      Name: !Sub "${AWS::StackName}-HttpApiId"
+
+  HttpApiUrl:
+    Description: HTTP API Gateway Base URL
+    Value: !Sub "https://${HttpApi}.execute-api.${AWS::Region}.amazonaws.com/${StageName}"
+    Export:
+      Name: !Sub "${AWS::StackName}-HttpApiUrl"

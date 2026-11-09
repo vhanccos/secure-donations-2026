@@ -1,0 +1,27 @@
+version = 0.1
+
+[default]
+[default.global.parameters]
+stack_name = "secure-donations-dev"
+
+[default.build.parameters]
+cached = true
+parallel = true
+
+[default.validate.parameters]
+lint = true
+
+[default.deploy.parameters]
+capabilities = "CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND"
+confirm_changeset = false
+resolve_s3 = false
+s3_bucket = "fundacion-aqp-sam-deploy-915275802786-us-east-2"
+s3_prefix = "secure-donations-dev"
+region = "us-east-2"
+parameter_overrides = "StageName=\"academic\""
+disable_rollback = false
+image_repositories = []
+
+[default.package.parameters]
+s3_bucket = "fundacion-aqp-sam-deploy-915275802786-us-east-2"
+region = "us-east-2"
