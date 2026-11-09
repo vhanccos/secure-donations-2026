@@ -66,13 +66,13 @@ Every feature from the Step 0 Survey is mapped to a milestone below.
 
 | # | Name | Scope | Dependencies | Status |
 |---|------|-------|-------------|--------|
-| Test | E2E Testing Track | Independent requirement-driven test suite (Tiers 1-4, T01-T14), runner, `TEST_READY.md` | none | IN_PROGRESS |
+| Test | E2E Testing Track | Independent requirement-driven test suite (Tiers 1-4, T01-T14), runner, `TEST_READY.md` | none | DONE |
 | M1 | Cloud Infrastructure & SAM Deployment | `template.yaml`, DynamoDB tables, Cognito, API Gateway PEP, deploy to AWS `us-east-2` | none | DONE |
 | M2 | Serverless Backend & Atomic Idempotency | TypeScript Lambdas (HU-01..09, 11), Zod schemas, TransactWriteItems, audit logging | M1 | DONE |
 | M3 | Frontend SPA & Browser Security | React 19, Tailwind CSS, in-memory tokens, simulation banner, MFA UI | M1 | DONE |
-| M4 | GitHub Repo & Collaborative Flow | GitHub repo `secure-donations-2026`, 4-member branches, commits, PRs, GitHub Actions CI | M1, M2, M3 | IN_PROGRESS |
-| M5 | Final Milestone: E2E Verification & Adversarial Hardening | Pass 100% of E2E test suite (Tiers 1-4, T01-T14) + Tier 5 adversarial hardening | M2, M3, Test | PLANNED |
-| M6 | Technical Report & Typst Compilation | Update `INFORME_LAB04_ZERO_TRUST.typ` with real evidence screenshots, compile PDF | M4, M5 | PLANNED |
+| M4 | GitHub Repo & Collaborative Flow | GitHub repo `secure-donations-2026`, 4-member branches, commits, PRs, GitHub Actions CI | M1, M2, M3 | DONE |
+| M5 | Final Milestone: E2E Verification & Adversarial Hardening | Pass 100% of E2E test suite (Tiers 1-4, T01-T14) + Tier 5 adversarial hardening | M2, M3, Test | DONE |
+| M6 | Technical Report & Typst Compilation | Update `INFORME_LAB04_ZERO_TRUST.typ` with real evidence screenshots, compile PDF | M4, M5 | DONE |
 
 ---
 

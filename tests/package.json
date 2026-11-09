@@ -1,0 +1,25 @@
+{
+  "name": "secure-donations-e2e-tests",
+  "version": "1.0.0",
+  "description": "Opaque-box E2E test suite for Plataforma de Donaciones Seguras (Fundación AQP-SOLIDARIA)",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "test": "bash run-all-tests.sh",
+    "test:runner": "node runner.js",
+    "test:tier1": "node e2e/tier1-public-discovery.test.js",
+    "test:tier2": "node e2e/tier2-auth-security.test.js",
+    "test:tier3": "node e2e/tier3-rbac-bola.test.js",
+    "test:tier4": "node e2e/tier4-integrity-concurrency.test.js",
+    "test:tier5": "node e2e/tier5-adversarial-concurrency.test.js"
+  },
+  "keywords": [
+    "zero-trust",
+    "nist-sp-800-207",
+    "e2e-tests",
+    "serverless",
+    "security-testing"
+  ],
+  "author": "Fundación AQP-SOLIDARIA QA Team",
+  "license": "MIT"
+}
