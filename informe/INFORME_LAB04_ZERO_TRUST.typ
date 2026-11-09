@@ -722,7 +722,7 @@ Para certificar la eliminación completa de los recursos al término del ciclo d
 ]
 
 // =========================================================================
-// 8. REFERENCIAS BIBLIOGRÁFICAS
+// 8. REFERENCIAS BIBLIOGRÁFICAS & GLOSARIO TÉCNICO
 // =========================================================================
 = Referencias Bibliográficas
 
@@ -731,3 +731,31 @@ Para certificar la eliminación completa de los recursos al término del ciclo d
 - [3] National Institute of Standards and Technology (NIST), "Implementing a Zero Trust Architecture," *NIST Special Publication 1800-35*, 2025.
 - [4] Cybersecurity and Infrastructure Security Agency (CISA), "Zero Trust Maturity Model Version 2.0," CISA Cybersecurity Division, Abr. 2023.
 - [5] OWASP Foundation, "OWASP API Security Top 10 2023," Open Web Application Security Project, Jun. 2023. [Online]. Disponible: #link("https://owasp.org/API-Security/")
+
+= Glosario de Términos y Tecnologías Clave
+
+#table(
+  columns: (1.5fr, 3.5fr),
+  fill: (col, row) => if row == 0 { c-primary.lighten(90%) } else if calc.even(row) { c-surface } else { white },
+  stroke: 0.5pt + c-border,
+  inset: (x: 6pt, y: 5pt),
+  table.header(
+    [*Término / Concepto*], [*Definición Técnica y Contexto en la Plataforma*]
+  ),
+  [*Amazon Cognito User Pool*], [Servicio de directorio de identidades administrado por AWS que actúa como *Policy Administrator (PA)*. Gestiona el registro de usuarios, almacenamiento seguro de credenciales con hashing fuerte, autenticación multifactor (MFA TOTP), asignación de grupos (`DONANTE`, `GESTOR`, `AUDITOR`) y emisión criptográfica de tokens JWT (RS256).],
+  [*AWS Lambda*], [Servicio de cómputo serverless orientado a eventos que ejecuta código en contenedores efímeros y aislados bajo demanda. En el proyecto actúa como *Policy Decision Point (PDP)* ejecutando 9 handlers en Node.js 24 + TypeScript, evaluando en memoria los claims de identidad y las restricciones de negocio.],
+  [*Amazon API Gateway (HTTP API v2)*], [Punto de entrada perimetral que actúa como *Policy Enforcement Point (PEP)*. Gestiona la terminación TLS 1.3, aplica políticas de seguridad HTTP (HSTS, CSP) e intercepta toda solicitud entrante mediante su *JWT Authorizer*, denegando peticiones anónimas (401) o sin scopes OAuth válidos (403) antes de invocar cómputo.],
+  [*Amazon DynamoDB*], [Base de datos NoSQL de clave-valor completamente administrada con baja latencia en milisegundos. Alberga las 4 tablas del sistema (`Projects`, `Donations`, `Idempotency`, `AuditEvents`) y soporta la operación transaccional coordinada `TransactWriteItems` con consistencia estricta.],
+  [*Zero Trust Architecture (ZTA)*], [Paradigma de ciberseguridad formalizado por NIST SP 800-207 basado en el principio rector «nunca confiar, siempre verificar». Asume que la red perimetral está comprometida y exige autenticación y autorización explícita para cada transacción individual independientemente de la red de origen.],
+  [*PA (Policy Administrator)*], [Componente del plano de control de Zero Trust responsable de administrar y emitir credenciales o tokens de acceso a los sujetos autenticados tras validar sus factores de identidad.],
+  [*PEP (Policy Enforcement Point)*], [Componente perimetral que protege y habilita el acceso a un recurso empresarial. Intercepta, inspecciona y decide si permite o descarta una comunicación basándose en la validez criptográfica del token y los scopes requeridos.],
+  [*PDP (Policy Decision Point)*], [Entidad lógica de evaluación profunda que determina el permiso final de acceso a datos u operaciones en función de políticas contextuales, rol del sujeto, y propiedad del recurso a manipular.],
+  [*PIP (Policy Information Point)*], [Fuentes de datos de contexto e información ambiental (bases de datos de estado, repositorios de auditoría y registros de telemetría) que asisten al PDP en la toma de decisiones.],
+  [*BOLA / IDOR (Broken Object Level Authorization)*], [Vulnerabilidad clasificada como API1:2023 en OWASP en la que un usuario manipula identificadores en peticiones para acceder a datos de terceros. Mitigada en la plataforma forzando que el identificador del usuario provenga del claim firmado `sub` del JWT y no de parámetros de entrada.],
+  [*MFA TOTP (Time-based One-Time Password)*], [Mecanismo de autenticación multifactor basado en tiempo (RFC 6238) que genera códigos dinámicos de 6 dígitos cada 30 segundos mediante una llave compartida entre el usuario y Cognito. Obligatorio en el sistema para roles `GESTOR` y `AUDITOR`.],
+  [*OAuth 2.0 con PKCE (Proof Key for Code Exchange)*], [Extensión del flujo de código de autorización (RFC 7636) diseñada para clientes públicos (SPAs) que previene la interceptación de códigos de autorización mediante el intercambio dinámico de un desafío criptográfico (`code_challenge` / `code_verifier`).],
+  [*JWT (JSON Web Token)*], [Estándar abierto (RFC 7519) para la transmisión segura de afirmaciones compactas entre partes. En la solución se emplean tokens firmados asimétricamente con el algoritmo RS256 mediante llaves públicas expuestas en el endpoint JWKS de Cognito, con vigencia máxima de 15 minutos.],
+  [*Idempotencia Atómica*], [Propiedad por la cual una operación financiera produce exactamente el mismo resultado ante múltiples ejecuciones idénticas. Implementada en DynamoDB con `TransactWriteItems` combinando la inserción condicional de la llave de idempotencia y el incremento atómico del proyecto en una sola transacción ACID indivisible.],
+  [*Storage Purge Guard*], [Mecanismo de seguridad proactivo del frontend cliente que detecta y purga de manera continua cualquier intento de persistencia de tokens de acceso en `localStorage` o `sessionStorage`, forzando el almacenamiento exclusivamente en memoria volátil de la SPA para mitigar ataques XSS (RNF-HU-11).],
+  [*AWS SAM (Serverless Application Model)*], [Framework de código abierto que extiende AWS CloudFormation mediante sintaxis simplificada para declarar funciones Lambda, APIs, tablas DynamoDB y roles IAM en una única plantilla declarativa (`template.yaml`).]
+)
