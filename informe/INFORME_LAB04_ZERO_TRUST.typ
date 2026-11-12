@@ -557,12 +557,31 @@ Si la clave UUID ya existe con el mismo hash SHA-256 del payload, se retorna la 
   )
 )
 
-#align(center)[
-  #figure(
-    image("screenshots/014-ui_responsive_375px.png", width: 68%),
+#grid(
+  columns: (1fr, 1fr),
+  gutter: 10pt,
+  figure(
+    image("screenshots/gestorcrearproyecto.png", width: 100%),
+    caption: [Panel del Gestor: Formulario de creación y publicación de proyectos con validación Zod.]
+  ),
+  figure(
+    image("screenshots/auditorvisordeeventos.png", width: 100%),
+    caption: [Panel del Auditor: Visor de auditoría inmutable de eventos con trazabilidad por Request ID.]
+  )
+)
+
+#grid(
+  columns: (1fr, 1fr),
+  gutter: 10pt,
+  figure(
+    image("screenshots/auditorvisordeeventosconfiltroprojectcreated.png", width: 100%),
+    caption: [Panel del Auditor: Filtrado granular de eventos en tiempo real (ej. PROJECT_CREATED).]
+  ),
+  figure(
+    image("screenshots/014-ui_responsive_375px.png", width: 100%),
     caption: [Verificación de diseño responsivo y accesible a 375 px (viewport móvil WCAG 2.2).]
   )
-]
+)
 
 // =========================================================================
 // 6. VERIFICACIÓN DE SEGURIDAD Y PRUEBAS NEGATIVAS (T01 - T14)
