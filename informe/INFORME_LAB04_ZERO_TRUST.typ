@@ -638,12 +638,12 @@ A continuación se detalla la verificación empírica de los 14 escenarios de pr
   columns: (1fr, 1fr),
   gutter: 10pt,
   figure(
-    image("screenshots/015-test_t02_unauthorized.png", width: 100%),
-    caption: [Prueba T02: Rechazo inmediato HTTP 401 Unauthorized sin token Bearer.]
+    image("screenshots/tests/test-T01.png", width: 100%),
+    caption: [Prueba T01: Consulta de catálogo público por visitante (200 OK, sin proyectos en borrador).]
   ),
   figure(
-    image("screenshots/016-test_t03_forbidden_role.png", width: 100%),
-    caption: [Prueba T03: Rechazo HTTP 403 Forbidden por violación de rol RBAC.]
+    image("screenshots/tests/test-T02.png", width: 100%),
+    caption: [Prueba T02: Rechazo perimetral HTTP 401 Unauthorized sin token Bearer en API Gateway PEP.]
   )
 )
 
@@ -651,12 +651,12 @@ A continuación se detalla la verificación empírica de los 14 escenarios de pr
   columns: (1fr, 1fr),
   gutter: 10pt,
   figure(
-    image("screenshots/017-test_t04_invalid_payload.png", width: 100%),
-    caption: [Prueba T04: Validación Zod de montos y tipos (400 Bad Request).]
+    image("screenshots/tests/test-T03.png", width: 100%),
+    caption: [Prueba T03: Rechazo HTTP 403 Forbidden a rol DONANTE al intentar crear/publicar proyectos.]
   ),
   figure(
-    image("screenshots/018-test_t06_t07_idempotencia.png", width: 100%),
-    caption: [Pruebas T06 y T07: Idempotencia atómica y colisión de hash SHA-256 (409).]
+    image("screenshots/tests/test-T04.png", width: 100%),
+    caption: [Prueba T04: Validación Zod de montos inválidos (0, negativos, decimales) con 400 Bad Request.]
   )
 )
 
@@ -664,12 +664,12 @@ A continuación se detalla la verificación empírica de los 14 escenarios de pr
   columns: (1fr, 1fr),
   gutter: 10pt,
   figure(
-    image("screenshots/019-test_t08_concurrencia_10_requests.png", width: 100%),
-    caption: [Prueba T08 / Tier 5: Concurrencia masiva (10 peticiones: 1x 200 y 9x 409).]
+    image("screenshots/tests/test-T05.png", width: 100%),
+    caption: [Prueba T05: Registro exitoso de intención válida con clave de idempotencia (HTTP 201 Created).]
   ),
   figure(
-    image("screenshots/020-test_t09_bola_mitigado.png", width: 100%),
-    caption: [Pruebas T09 y T12: Mitigación efectiva de BOLA / IDOR y segregación.]
+    image("screenshots/tests/test-T06.png", width: 100%),
+    caption: [Prueba T06: Idempotencia atómica retornando resultado en caché ante reintento con payload idéntico.]
   )
 )
 
@@ -677,12 +677,51 @@ A continuación se detalla la verificación empírica de los 14 escenarios de pr
   columns: (1fr, 1fr),
   gutter: 10pt,
   figure(
-    image("screenshots/021-test_t10_iam_least_privilege.png", width: 100%),
-    caption: [Prueba T10: Verificación de mínimo privilegio IAM (denegación de escritura).]
+    image("screenshots/tests/test-T07.png", width: 100%),
+    caption: [Prueba T07: Detección de colisión de clave de idempotencia con payload alterado (HTTP 409 Conflict).]
   ),
   figure(
-    image("screenshots/022-test_t11_id_token_rejected.png", width: 100%),
-    caption: [Prueba T11: Rechazo de ID Token de Cognito por falta de scopes OAuth.]
+    image("screenshots/tests/test-T08.png", width: 100%),
+    caption: [Prueba T08: Concurrencia masiva (10 llamadas paralelas: exactamente 1x 200 OK y 9x 409 Conflict).]
+  )
+)
+
+#grid(
+  columns: (1fr, 1fr),
+  gutter: 10pt,
+  figure(
+    image("screenshots/tests/test-T09.png", width: 100%),
+    caption: [Prueba T09: Mitigación efectiva de ataque BOLA / IDOR al intentar manipular donaciones ajenas.]
+  ),
+  figure(
+    image("screenshots/tests/test-T10.png", width: 100%),
+    caption: [Prueba T10: Mínimo privilegio IAM con denegación explícita de mutación en funciones de lectura.]
+  )
+)
+
+#grid(
+  columns: (1fr, 1fr),
+  gutter: 10pt,
+  figure(
+    image("screenshots/tests/test-T11.png", width: 100%),
+    caption: [Prueba T11: Rechazo en PEP de ID Tokens o tokens con firma alterada/alg:none (HTTP 401/403).]
+  ),
+  figure(
+    image("screenshots/tests/test-T12.png", width: 100%),
+    caption: [Prueba T12: Segregación estricta de funciones (SoD): Gestor intentando leer historial privado (403).]
+  )
+)
+
+#grid(
+  columns: (1fr, 1fr),
+  gutter: 10pt,
+  figure(
+    image("screenshots/tests/test-T13.png", width: 100%),
+    caption: [Prueba T13: Ciclo de vida y revocación OAuth: Tokens expirados o revocados rechazados por API Gateway.]
+  ),
+  figure(
+    image("screenshots/tests/test-T14.png", width: 100%),
+    caption: [Prueba T14: Obligatoriedad de MFA TOTP: Roles privilegiados sin segundo factor no obtienen tokens.]
   )
 )
 
