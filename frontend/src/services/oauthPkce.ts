@@ -84,3 +84,31 @@ export async function exchangeOAuthCode(
     refreshToken: data.refresh_token,
   };
 }
+
+export async function refreshAccessToken(
+  refreshToken: string
+): Promise<{ accessToken: string; idToken?: string; expiresIn: number }> {
+  const body = new URLSearchParams({
+    grant_type: 'refresh_token',
+    client_id: CLIENT_ID,
+    refresh_token: refreshToken,
+  });
+
+  const res = await fetch(`${COGNITO_DOMAIN}/oauth2/token`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: body.toString(),
+  });
+
+  if (!res.ok) {
+    const errorBody = await res.text();
+    throw new Error(`Error al refrescar token OAuth (${res.status}): ${errorBody}`);
+  }
+
+  const data = await res.json();
+  return {
+    accessToken: data.access_token,
+    idToken: data.id_token,
+    expiresIn: data.expires_in || 900,
+  };
+}

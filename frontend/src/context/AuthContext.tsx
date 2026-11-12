@@ -14,6 +14,7 @@ import {
   generatePkcePair,
   buildCognitoAuthorizeUrl,
   exchangeOAuthCode,
+  refreshAccessToken,
 } from '../services/oauthPkce';
 import { AUTHENTIC_DEMO_TOKENS } from '../services/demoTokens';
 
@@ -95,8 +96,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [authError, setAuthError] = useState<string | null>(null);
 
-  // Volatile memory ref for immediate synchronous access
-  const tokensRef = useRef<InMemTokens | null>(null);
+  // Volatile memory ref for immediate synchronous access and silent refresh
+  const tokensRef = useRef<(InMemTokens & { refreshToken?: string }) | null>(null);
 
   // STORAGE PURGE GUARD (NIST SP 800-207 Zero Trust)
   // Ensures absolutely no tokens enter localStorage or sessionStorage
@@ -133,11 +134,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     purgeStorage();
   }, []);
 
-  const setAuthenticatedSession = useCallback((access: string, id: string | null) => {
+  const setAuthenticatedSession = useCallback((access: string, id: string | null, refresh?: string) => {
     tokensRef.current = {
       accessToken: access,
       idToken: id || access,
       expiresAt: Date.now() + 15 * 60 * 1000,
+      refreshToken: refresh,
     };
     setAccessToken(access);
     setIdToken(id);
@@ -160,7 +162,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (verifier) {
         exchangeOAuthCode(code, verifier)
           .then((tokens) => {
-            setAuthenticatedSession(tokens.accessToken, tokens.idToken);
+            setAuthenticatedSession(tokens.accessToken, tokens.idToken, tokens.refreshToken);
             window.history.replaceState({}, document.title, window.location.pathname);
           })
           .catch((err: unknown) => {
@@ -229,7 +231,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       const demoPrincipal = AUTHENTIC_DEMO_TOKENS[role];
       if (demoPrincipal && demoPrincipal.accessToken) {
-        setAuthenticatedSession(demoPrincipal.accessToken, demoPrincipal.idToken);
+        // Check if demo token is close to expiry or expired, and refresh if refreshToken is available
+        const currentExp = extractUserClaims(demoPrincipal.accessToken).exp;
+        const now = Math.floor(Date.now() / 1000);
+
+        if (currentExp && currentExp - now < 120 && demoPrincipal.refreshToken) {
+          try {
+            console.info(`[AuthContext] Refreshing token for demo role ${role}...`);
+            const refreshed = await refreshAccessToken(demoPrincipal.refreshToken);
+            demoPrincipal.accessToken = refreshed.accessToken;
+            if (refreshed.idToken) {
+              demoPrincipal.idToken = refreshed.idToken;
+            }
+          } catch (refreshErr) {
+            console.warn('[AuthContext] Silent refresh failed, falling back to cached token', refreshErr);
+          }
+        }
+
+        setAuthenticatedSession(demoPrincipal.accessToken, demoPrincipal.idToken, demoPrincipal.refreshToken);
       } else {
         throw new Error(`Credenciales demo no disponibles para el rol ${role}`);
       }
