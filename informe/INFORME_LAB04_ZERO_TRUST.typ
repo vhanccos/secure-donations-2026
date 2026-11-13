@@ -34,14 +34,10 @@
         columns: (1fr, auto),
         align(left + bottom)[
           #text(size: 8pt, fill: c-muted, font: "Liberation Sans", weight: "bold")[
-            TAIS • GRUPO B1
+            LAB 04 — ARQUITECTURA ZERO TRUST
           ]
         ],
-        align(right + bottom)[
-          #text(size: 8pt, fill: c-primary, font: "Liberation Sans", weight: "bold")[
-            Página #counter(page).display()
-          ]
-        ]
+        align(right + bottom)[]
       )
       #v(2.5pt)
       #line(length: 100%, stroke: 0.5pt + c-border)
@@ -55,10 +51,14 @@
         columns: (1fr, auto),
         align(left + top)[
           #text(size: 8pt, fill: c-muted, font: "Liberation Sans", weight: "bold")[
-            LAB 04 — ARQUITECTURA ZERO TRUST
+            TAIS • GRUPO B1
           ]
         ],
-        align(right + top)[]
+        align(right + top)[
+          #text(size: 8pt, fill: c-primary, font: "Liberation Sans", weight: "bold")[
+            Página #counter(page).display()
+          ]
+        ]
       )
     ]
   }
@@ -150,9 +150,9 @@ Para facilitar la verificación independiente y reproducción en vivo de la plat
   table.header(
     [*Recurso de Evaluación*], [*Identificador / URL Pública*], [*Credenciales / Notas*]
   ),
-  [*Repositorio GitHub*], [#link("https://github.com/vhanccos/secure-donations-2026")], [Monorepo con CI Actions en verde],
-  [*API Gateway PEP (Live)*], [`https://evft7i355m.execute-api.us-east-2.amazonaws.com/academic`], [Stage `academic` (TLS 1.3 / HSTS)],
-  [*Cognito Hosted UI (SSO)*], [`https://aqp-solidaria-915275802786.auth.us-east-2.amazoncognito.com`], [OAuth 2.0 PKCE + TOTP MFA],
+  [*Repositorio GitHub*], [#link("https://github.com/vhanccos/secure-donations-2026")[https://github.com/vhanccos/secure-donations-2026]], [Monorepo con CI Actions en verde],
+  [*API Gateway PEP (Live)*], [#link("https://evft7i355m.execute-api.us-east-2.amazonaws.com/academic")[https://evft7i355m.execute-api.us-east-2.amazonaws.com/academic]], [Stage `academic` (TLS 1.3 / HSTS)],
+  [*Cognito Hosted UI (SSO)*], [#link("https://aqp-solidaria-915275802786.auth.us-east-2.amazoncognito.com")[https://aqp-solidaria-915275802786.auth.us-east-2.amazoncognito.com]], [OAuth 2.0 PKCE + TOTP MFA],
   [*Usuario Donante (Prueba)*], [`challenger_donante_a@aqp-solidaria.org`], [`TestPassword123!` (Sin MFA)],
   [*Usuario Gestor (MFA)*], [`challenger_gestor@aqp-solidaria.org`], [`TestPassword123!` + TOTP RFC 6238],
   [*Usuario Auditor (MFA)*], [`challenger_auditor@aqp-solidaria.org`], [`TestPassword123!` + TOTP RFC 6238],
