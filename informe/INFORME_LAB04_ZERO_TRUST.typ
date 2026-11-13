@@ -158,10 +158,15 @@ El presente laboratorio aborda el diseño, despliegue y verificación empírica 
 
 Bajo este escenario, el proyecto implementa un modelo estricto de *Arquitectura de Confianza Cero (Zero Trust Architecture - ZTA)* conforme a los lineamientos de *NIST SP 800-207* [1] y *NIST SP 800-207A* [2], adoptando la premisa fundamental de *«asumir la brecha»* (assume breach), eliminando toda confianza implícita por origen de red, aplicando autenticación y autorización continua en cada recurso, y forzando el principio de menor privilegio.
 
-== Delimitación del Alcance Académico
+== Delimitación del Alcance Académico y Limitaciones Zero Trust Declaradas
 En estricto apego a las directivas del curso y a los requerimientos de seguridad, el sistema gestiona *donaciones simuladas* con fines de verificación de seguridad e integridad transaccional:
 - *Prohibición de Datos Financieros Reales:* Queda terminantemente fuera de alcance solicitar, procesar o almacenar números de tarjeta bancaria, CVV, fechas de expiración o credenciales de pago.
 - *Transiciones de Estado Simuladas:* Las intenciones de donación se crean en estado `PENDIENTE_SIMULACION` y transicionan a `CONFIRMADA_SIMULADA` o `RECHAZADA_SIMULADA` exclusivamente a través de un endpoint condicionado al entorno académico (`stage academic`).
+- *Limitaciones Zero Trust Declaradas por Restricciones de AWS Free Plan:* Conforme exige el estándar NIST SP 800-207 y la especificación de `requirements.md` (§1), se declaran explícitamente las siguientes capacidades avanzadas fuera del alcance de la cuenta gratuita:
+  1. *Verificación de postura del dispositivo cliente:* No se cuenta con agentes EDR o inspección ZTNA física del host que ejecuta el navegador web.
+  2. *Evaluación continua de riesgo de sesión (Adaptive Risk):* Cognito User Pool en Free Tier opera con directivas estándar sin evaluación heurística basada en Machine Learning por evento (Cognito Advanced Security / Risk-based Adaptive Auth).
+  3. *ZTNA Administrado (AWS Verified Access):* El punto perimetral se resuelve en API Gateway HTTP API v2 con JWT Authorizer en lugar de un concentrador ZTNA corporativo dedicado.
+  4. *Detección de Amenazas Gestionada (Amazon GuardDuty / Security Hub):* El monitoreo se concentra en logs estructurados JSON en CloudWatch y trazas inmutables en CloudTrail, sin correlación SIEM gestionada.
 - *Repositorio Oficial:* El ciclo de vida de desarrollo, infraestructura reproducible en AWS SAM y la suite de pruebas automatizadas se encuentran versionados en el repositorio público de GitHub:
 
 #align(center)[
@@ -531,6 +536,12 @@ await ddb.send(new TransactWriteCommand({
 
 Si la clave UUID ya existe con el mismo hash SHA-256 del payload, se retorna la respuesta previa en caché (`HTTP 201`). Si el payload difiere, se rechaza inmediatamente con `HTTP 409 Conflict`.
 
+== Ciclo de Vida y Limitación de Revocación de Tokens JWT (CA-03.3, CA-03.4)
+Siguiendo los lineamientos de diseño de *Amazon API Gateway HTTP API v2* y *Amazon Cognito*:
+- *Validación Local en el PEP:* El JWT Authorizer de API Gateway valida criptográficamente la firma RS256 contra el JWKS público, el emisor (`iss`), la audiencia/client ID y la fecha de expiración (`exp`) *de forma local sin invocar a Cognito por cada petición* para garantizar baja latencia ($< 15$ ms).
+- *Limitación Demostrada de Revocación:* Como API Gateway no consulta activamente la lista de revocaciones en tiempo real, un *Access Token* revocado mediante el endpoint `/oauth2/revoke` continúa siendo válido en el PEP hasta su fecha programada de expiración.
+- *Mitigación Zero Trust:* Para mitigar esta ventana de exposición y satisfacer el principio 3 de NIST SP 800-207, la vigencia del *Access Token* se configuró estrictamente en un máximo de *15 minutos* (`AccessTokenValidity: 15`). Adicionalmente, el *Refresh Token* sí es revocado de forma inmediata en Cognito, impidiendo que el cliente renueve credenciales una vez cerrada la sesión. Esta limitación y su mitigación quedan empíricamente verificadas en la suite de pruebas mediante el escenario *T13* (`T13.1`, `T13.2`, `T13.3`).
+
 #grid(
   columns: (1fr, 1fr),
   gutter: 10pt,
@@ -618,20 +629,20 @@ A continuación se detalla la verificación empírica de los 14 escenarios de pr
   table.header(
     [*ID*], [*Escenario de Prueba y Trazabilidad*], [*Resultado Empírico*], [*Evidencia / Figura*]
   ),
-  [T01], [Visitante consulta catálogo; excluye borradores (CA-01.1, CA-01.2, HU-01)], [HTTP 200 (Solo PUBLICADO)], [Figura 10 (Catálogo Público)],
-  [T02], [Petición sin token Authorization Bearer (CA-03.2, RNF-HU-02)], [HTTP 401 Unauthorized en PEP], [Figura 15 (Prueba T02)],
-  [T03], [Donante intenta crear o publicar proyecto (CA-04.1, HU-04)], [HTTP 403 Forbidden (GESTOR req.)], [Figura 16 (Prueba T03)],
-  [T04], [Validación estricta: montos 0, float, negativos o sin UUID (CA-05.2)], [HTTP 400 Bad Request (Zod)], [Figura 17 (Prueba T04)],
-  [T05], [Donante crea intención de donación válida con UUID (CA-05.1, HU-05)], [HTTP 201 PENDIENTE_SIMULACION], [Figura 11 (Donación Simulada)],
-  [T06], [Reintento con misma clave UUID y payload idéntico (CA-05.4)], [HTTP 201 (caché idempotente)], [Figura 18 (Idempotencia Atómica)],
-  [T07], [Reintento con misma clave pero payload modificado (CA-05.4)], [HTTP 409 Conflict (hash mismatch)], [Figura 18 (Conflicto de Hash)],
-  [T08], [10 peticiones concurrentes confirmando la misma donación (CA-06.2)], [Exactamente 1x 200 y 9x 409], [Figura 19 (Concurrencia Masiva)],
-  [T09], [BOLA / IDOR: Donante intenta ver o alterar donación ajena (CA-07.1)], [HTTP 403 Forbidden / Historial aislado], [Figura 20 (Mitigación BOLA)],
-  [T10], [Mínimo privilegio IAM: Lambda de lectura intenta escribir (CA-NF03.1)], [implicitDeny / AccessDeniedException], [Figura 21 (Mínimo Privilegio)],
-  [T11], [Token alterado / firma corrupta / ID Token sin scopes OAuth (CA-03.2)], [HTTP 401 / 403 insufficient_scope], [Figura 22 (Rechazo de ID Token)],
-  [T12], [Segregación de roles: Gestor en `/donations/me` o Donante en `/audit`], [HTTP 403 Forbidden en ambos casos], [Figura 20 (Segregación de Roles)],
-  [T13], [Token revocado o con caducidad vencida (CA-03.3, CA-03.4)], [HTTP 401 expirado / 400 revoke], [Sección 5 (Control de Sesión)],
-  [T14], [Usuario privilegiado inicia sesión sin segundo factor (CA-11.2)], [Desafío SOFTWARE_TOKEN_MFA], [Figura 12 (TOTP MFA Obligatorio)]
+  [T01], [Visitante consulta catálogo; excluye borradores (CA-01.1, CA-01.2, HU-01)], [HTTP 200 (Solo PUBLICADO)], [Figura: Prueba T01],
+  [T02], [Petición sin token Authorization Bearer (CA-03.2, RNF-HU-02)], [HTTP 401 Unauthorized en PEP], [Figura: Prueba T02],
+  [T03], [Donante intenta crear o publicar proyecto (CA-04.1, HU-04)], [HTTP 403 Forbidden (GESTOR req.)], [Figura: Prueba T03],
+  [T04], [Validación estricta: montos 0, float, negativos o sin UUID (CA-05.2)], [HTTP 400 Bad Request (Zod)], [Figura: Prueba T04],
+  [T05], [Donante crea intención de donación válida con UUID (CA-05.1, HU-05)], [HTTP 201 PENDIENTE_SIMULACION], [Figura: Prueba T05],
+  [T06], [Reintento con misma clave UUID y payload idéntico (CA-05.4)], [HTTP 201 (caché idempotente)], [Figura: Prueba T06],
+  [T07], [Reintento con misma clave pero payload modificado (CA-05.4)], [HTTP 409 Conflict (hash mismatch)], [Figura: Prueba T07],
+  [T08], [10 peticiones concurrentes confirmando la misma donación (CA-06.2)], [Exactamente 1x 200 y 9x 409], [Figura: Prueba T08],
+  [T09], [BOLA / IDOR: Donante intenta ver o alterar donación ajena (CA-07.1)], [HTTP 403 Forbidden / Historial aislado], [Figura: Prueba T09],
+  [T10], [Mínimo privilegio IAM: Lambda de lectura intenta escribir (CA-NF03.1)], [implicitDeny / AccessDeniedException], [Figura: Prueba T10],
+  [T11], [Token alterado / firma corrupta / ID Token sin scopes OAuth (CA-03.2)], [HTTP 401 / 403 insufficient_scope], [Figura: Prueba T11],
+  [T12], [Segregación de roles: Gestor en `/donations/me` o Donante en `/audit`], [HTTP 403 Forbidden en ambos casos], [Figura: Prueba T12],
+  [T13], [Token revocado o con caducidad vencida (CA-03.3, CA-03.4)], [HTTP 401 expirado / invalid_grant], [Figura: Prueba T13],
+  [T14], [Usuario privilegiado inicia sesión sin segundo factor (CA-11.2)], [Desafío SOFTWARE_TOKEN_MFA], [Figura: Prueba T14]
 )
 
 #grid(
