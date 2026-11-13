@@ -34,12 +34,12 @@
         columns: (1fr, auto),
         align(left + bottom)[
           #text(size: 8pt, fill: c-muted, font: "Liberation Sans", weight: "bold")[
-            TAIS • LAB 04 — ARQUITECTURA ZERO TRUST
+            TAIS • GRUPO B1
           ]
         ],
         align(right + bottom)[
           #text(size: 8pt, fill: c-primary, font: "Liberation Sans", weight: "bold")[
-            FUNDACIÓN AQP-SOLIDARIA • AWS SERVERLESS
+            Página #counter(page).display()
           ]
         ]
       )
@@ -48,22 +48,17 @@
     ]
   },
   footer: context {
-    let p = counter(page).get().first()
-    if p > 1 [
+    if counter(page).get().first() > 1 [
       #line(length: 100%, stroke: 0.5pt + c-border)
       #v(2.5pt)
       #grid(
         columns: (1fr, auto),
         align(left + top)[
           #text(size: 8pt, fill: c-muted, font: "Liberation Sans", weight: "bold")[
-            UNSA • EPIS • GRUPO B1
+            LAB 04 — ARQUITECTURA ZERO TRUST
           ]
         ],
-        align(right + top)[
-          #text(size: 8.5pt, fill: c-primary, font: "Liberation Sans", weight: "bold")[
-            Página #(p - 1)
-          ]
-        ]
+        align(right + top)[]
       )
     ]
   }
@@ -117,40 +112,26 @@
   ]
 ]
 
-// Inserción de la Carátula como primera página
+// =========================================================================
+// PÁGINA 1: CARÁTULA
+// =========================================================================
 #place(top + left, dx: -2.2cm, dy: -2.3cm)[
   #image("screenshots/caratula.pdf", width: 21cm, height: 29.7cm)
 ]
 #pagebreak()
 
 // =========================================================================
-// MEMBRETE INSTITUCIONAL FORMAL
+// PÁGINA 2: ÍNDICE GENERAL
 // =========================================================================
-#align(center)[
-  #text(size: 13.5pt, weight: "bold", fill: c-primary)[UNIVERSIDAD NACIONAL DE SAN AGUSTÍN DE AREQUIPA]\
-  #v(2pt)
-  #text(size: 10.5pt, weight: "bold")[FACULTAD DE INGENIERÍA DE PRODUCCIÓN Y SERVICIOS — EPIS]\
-  #v(2pt)
-  #text(size: 9.5pt, fill: c-muted)[Tópicos Avanzados en Ingeniería de Software (Grupo B1) • Docente: Mg. Robert Edison Arisaca Mamani]\
-  #v(5pt)
-  #text(size: 11.5pt, weight: "bold", fill: c-text)[INFORME TÉCNICO DE LABORATORIO 04]\
-  #text(size: 10.5pt, weight: "bold", fill: c-primary)[Arquitectura Serverless Cloud-Native con Modelo Zero Trust (NIST SP 800-207)]\
-  #text(size: 9.2pt, style: "italic", fill: rgb("#334155"))[Plataforma de Donaciones Seguras — «Fundación AQP-SOLIDARIA»]\
-  #v(4pt)
-  #text(size: 8.5pt)[
-    *Autores del Equipo:*
-    Vladimir Hancco (`vhanccos`) •
-    Jean Chara (`jcharaco@unsa.edu.pe`) •
-    Jeanpier Valera (`jvalera@unsa.edu.pe`) •
-    Gonzalo Layme (`glaymem@unsa.edu.pe`)
-  ]
-]
-#v(6pt)
-#line(length: 100%, stroke: 0.8pt + c-border)
-#v(6pt)
+#outline(
+  title: [Índice de Contenidos],
+  depth: 2,
+  indent: 1.5em
+)
+#pagebreak()
 
 // =========================================================================
-// 1. ALCANCE DEL PROYECTO Y ENLACES DE EVALUACIÓN
+// PÁGINA 3 EN ADELANTE: CONTENIDO TÉCNICO
 // =========================================================================
 = 1. Alcance del Proyecto y Enlaces de Evaluación
 
