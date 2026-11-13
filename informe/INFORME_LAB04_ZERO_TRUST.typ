@@ -150,6 +150,7 @@ Para facilitar la verificación independiente y reproducción en vivo de la plat
   table.header(
     [*Recurso de Evaluación*], [*Identificador / URL Pública*], [*Credenciales / Notas*]
   ),
+  [*Aplicación Web SPA (Live)*], [#link("https://frontend-rho-ten-97.vercel.app")[https://frontend-rho-ten-97.vercel.app]], [Frontend React en Vercel (HTTPS/TLS)],
   [*Repositorio GitHub*], [#link("https://github.com/vhanccos/secure-donations-2026")[https://github.com/vhanccos/secure-donations-2026]], [Monorepo con CI Actions en verde],
   [*API Gateway PEP (Live)*], [#link("https://evft7i355m.execute-api.us-east-2.amazonaws.com/academic")[https://evft7i355m.execute-api.us-east-2.amazonaws.com/academic]], [Stage `academic` (TLS 1.3 / HSTS)],
   [*Cognito Hosted UI (SSO)*], [#link("https://aqp-solidaria-915275802786.auth.us-east-2.amazoncognito.com")[https://aqp-solidaria-915275802786.auth.us-east-2.amazoncognito.com]], [OAuth 2.0 PKCE + TOTP MFA],
