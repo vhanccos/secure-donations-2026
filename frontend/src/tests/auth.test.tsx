@@ -11,9 +11,9 @@ const TestAuthConsumer: React.FC = () => {
       <div data-testid="user-role">{user ? user.primaryRole : 'NONE'}</div>
       <div data-testid="user-email">{user ? user.email : 'NONE'}</div>
       <div data-testid="has-token">{accessToken ? 'YES' : 'NO'}</div>
-      <button onClick={() => loginAsDemoUser('DONANTE')}>Login Donante</button>
-      <button onClick={() => loginAsDemoUser('GESTOR')}>Login Gestor</button>
-      <button onClick={() => loginAsDemoUser('AUDITOR')}>Login Auditor</button>
+      <button onClick={async () => { await loginAsDemoUser('DONANTE'); }}>Login Donante</button>
+      <button onClick={async () => { await loginAsDemoUser('GESTOR'); }}>Login Gestor</button>
+      <button onClick={async () => { await loginAsDemoUser('AUDITOR'); }}>Login Auditor</button>
       <button onClick={logout}>Logout</button>
     </div>
   );
