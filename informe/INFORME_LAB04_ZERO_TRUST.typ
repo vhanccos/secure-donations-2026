@@ -150,33 +150,48 @@
 #v(6pt)
 
 // =========================================================================
-// 1. CONTEXTO Y ALCANCE DEL PROYECTO
+// 1. ALCANCE DEL PROYECTO Y ENLACES DE EVALUACIÓN
 // =========================================================================
-= Contexto del proyecto aplicado y alcance
+= 1. Alcance del Proyecto y Enlaces de Evaluación
 
-El presente laboratorio aborda el diseño, despliegue y verificación empírica de una plataforma cloud-native serverless de captación y gestión de intenciones de donaciones sociales para la entidad benéfica *«Fundación AQP-SOLIDARIA»*. En organizaciones de beneficencia social, la confianza pública y la transparencia en el manejo de fondos son activos críticos. Cualquier incidente de alteración de montos, doble conteo transaccional o exposición no autorizada de historiales de donantes compromete de forma irreversible la viabilidad de sus campañas benéficas.
+El presente informe documenta el diseño, despliegue y verificación experimental de la plataforma cloud-native serverless «Fundación AQP-SOLIDARIA», orientada a la publicación de campañas sociales y recepción de intenciones de donación con trazabilidad estricta.
 
-Bajo este escenario, el proyecto implementa un modelo estricto de *Arquitectura de Confianza Cero (Zero Trust Architecture - ZTA)* conforme a los lineamientos de *NIST SP 800-207* [1] y *NIST SP 800-207A* [2], adoptando la premisa fundamental de *«asumir la brecha»* (assume breach), eliminando toda confianza implícita por origen de red, aplicando autenticación y autorización continua en cada recurso, y forzando el principio de menor privilegio.
+La plataforma se fundamenta en el modelo de seguridad *Zero Trust Architecture (ZTA)* estipulado en *NIST SP 800-207* [1] y *NIST SP 800-207A* [2], asumiendo que la red perimetral está comprometida ("assume breach"), requiriendo verificación continua de identidad y permisos por recurso, y aplicando privilegio mínimo en usuarios y cargas de trabajo.
 
-== Delimitación del Alcance Académico y Limitaciones Zero Trust Declaradas
-En estricto apego a las directivas del curso y a los requerimientos de seguridad, el sistema gestiona *donaciones simuladas* con fines de verificación de seguridad e integridad transaccional:
-- *Prohibición de Datos Financieros Reales:* Queda terminantemente fuera de alcance solicitar, procesar o almacenar números de tarjeta bancaria, CVV, fechas de expiración o credenciales de pago.
-- *Transiciones de Estado Simuladas:* Las intenciones de donación se crean en estado `PENDIENTE_SIMULACION` y transicionan a `CONFIRMADA_SIMULADA` o `RECHAZADA_SIMULADA` exclusivamente a través de un endpoint condicionado al entorno académico (`stage academic`).
-- *Limitaciones Zero Trust Declaradas por Restricciones de AWS Free Plan:* Conforme exige el estándar NIST SP 800-207 y la especificación de `requirements.md` (§1), se declaran explícitamente las siguientes capacidades avanzadas fuera del alcance de la cuenta gratuita:
-  1. *Verificación de postura del dispositivo cliente:* No se cuenta con agentes EDR o inspección ZTNA física del host que ejecuta el navegador web.
-  2. *Evaluación continua de riesgo de sesión (Adaptive Risk):* Cognito User Pool en Free Tier opera con directivas estándar sin evaluación heurística basada en Machine Learning por evento (Cognito Advanced Security / Risk-based Adaptive Auth).
-  3. *ZTNA Administrado (AWS Verified Access):* El punto perimetral se resuelve en API Gateway HTTP API v2 con JWT Authorizer en lugar de un concentrador ZTNA corporativo dedicado.
-  4. *Detección de Amenazas Gestionada (Amazon GuardDuty / Security Hub):* El monitoreo se concentra en logs estructurados JSON en CloudWatch y trazas inmutables en CloudTrail, sin correlación SIEM gestionada.
-- *Repositorio Oficial:* El ciclo de vida de desarrollo, infraestructura reproducible en AWS SAM y la suite de pruebas automatizadas se encuentran versionados en el repositorio público de GitHub:
+== Cuadro de Referencia Operativa para Evaluación Docente
+Para facilitar la verificación independiente y reproducción en vivo de la plataforma:
 
-#align(center)[
-  #link("https://github.com/vhanccos/secure-donations-2026")
-]
+#table(
+  columns: (1.3fr, 2.5fr, 1.4fr),
+  fill: (col, row) => if row == 0 { c-primary.lighten(90%) } else if calc.even(row) { c-surface } else { white },
+  stroke: 0.5pt + c-border,
+  inset: (x: 5pt, y: 4.5pt),
+  table.header(
+    [*Recurso de Evaluación*], [*Identificador / URL Pública*], [*Credenciales / Notas*]
+  ),
+  [*Repositorio GitHub*], [#link("https://github.com/vhanccos/secure-donations-2026")], [Monorepo con CI Actions en verde],
+  [*API Gateway PEP (Live)*], [`https://evft7i355m.execute-api.us-east-2.amazonaws.com/academic`], [Stage `academic` (TLS 1.3 / HSTS)],
+  [*Cognito Hosted UI (SSO)*], [`https://aqp-solidaria-915275802786.auth.us-east-2.amazoncognito.com`], [OAuth 2.0 PKCE + TOTP MFA],
+  [*Usuario Donante (Prueba)*], [`challenger_donante_a@aqp-solidaria.org`], [`TestPassword123!` (Sin MFA)],
+  [*Usuario Gestor (MFA)*], [`challenger_gestor@aqp-solidaria.org`], [`TestPassword123!` + TOTP RFC 6238],
+  [*Usuario Auditor (MFA)*], [`challenger_auditor@aqp-solidaria.org`], [`TestPassword123!` + TOTP RFC 6238],
+  [*Ejecución de Pruebas E2E*], [`bash tests/run-all-tests.sh`], [55/55 pruebas en vivo aprobadas],
+  [*Prueba Individual*], [`node tests/run-single-test.js T02`], [Soporta escenarios T01 a T14]
+)
+
+== Delimitación del Alcance y Limitaciones Free Tier
+Conforme a la especificación académica de `requirements.md` (§1):
+- *Donaciones Estrictamente Simuladas:* Prohibición absoluta de solicitar, transmitir o almacenar números de tarjeta, CVV o cuentas bancarias. Las intenciones se registran como `PENDIENTE_SIMULACION` y se confirman únicamente mediante un endpoint transaccional exclusivo del stage académico.
+- *Limitaciones Declaradas por Restricciones de AWS Free Plan:*
+  1. *Postura del Dispositivo Cliente:* No se dispone de agentes EDR corporativos en los hosts que abren la SPA.
+  2. *Adaptive Risk Authentication:* La cuenta Free Tier no incluye Cognito Advanced Security para scoring heurístico ML por sesión.
+  3. *ZTNA Gestionado Dedicado:* El control perimetral se resuelve en API Gateway HTTP API v2 con JWT Authorizer, en lugar de AWS Verified Access.
+  4. *SIEM Gestionado:* La detección se apoya en CloudWatch Logs estructurados y CloudTrail inmutable, sin GuardDuty ni Security Hub.
 
 // =========================================================================
-// 2. FUNDAMENTACIÓN TEÓRICA ZERO TRUST
+// 2. ARQUITECTURA ZERO TRUST (NIST SP 800-207)
 // =========================================================================
-= Fundamentación Teórica y Modelo Zero Trust
+= 2. Arquitectura de Seguridad Zero Trust (NIST SP 800-207)
 
 == Principios Fundamentales (NIST SP 800-207)
 A diferencia de los modelos perimetrales tradicionales ("castillo y foso"), la arquitectura implementada aplica de forma verificable los 7 principios de la publicación especial NIST SP 800-207 [1]:
@@ -298,13 +313,13 @@ Siguiendo los estándares de NIST SP 800-207 y CISA ZTMM v2.0 [4], el sistema de
 )
 
 // =========================================================================
-// 3. GOBERNANZA, SETUP AWS FREE TIER Y RECURSOS DESPLEGADOS
+// 3. INFRAESTRUCTURA CLOUD Y GOBERNANZA DE COSTOS
 // =========================================================================
-= Gobernanza, Configuración AWS Free Tier y Recursos Desplegados
+= 3. Infraestructura Cloud y Gobernanza de Costos
 
 En cumplimiento estricto con el requerimiento *RNF-HU-09 (CA-NF09.1)*, la infraestructura opera bajo el plan gratuito de AWS (Free Tier), asegurando costo cero y estricto control de privilegios de acceso.
 
-== Aseguramiento de Cuenta y Control Preventivo de Presupuesto
+== Control Preventivo de Presupuesto (AWS Budgets)
 1. *Protección de Cuenta Root:* Se activó autenticación multifactor (MFA TOTP) en la cuenta administradora y se revocaron permanentemente todas las llaves de acceso estáticas (access keys).
 2. *Alarma Preventiva en AWS Budgets:* Se configuró un presupuesto mensual con umbral de *\$1.00 USD* en la región `us-east-2`, con notificaciones automatizadas vía correo electrónico al 50%, 80% y 100% del consumo proyectado.
 
@@ -394,9 +409,9 @@ La infraestructura en la nube está completamente desplegada y operativa, intera
 ]
 
 // =========================================================================
-// 4. DESARROLLO COLABORATIVO Y CI/CD
+// 4. ESTRUCTURA DEL MONOREPO Y GIT FLOW
 // =========================================================================
-= Desarrollo Colaborativo, Git y CI/CD
+= 4. Estructura del Monorepo y Git Flow
 
 El proyecto se estructuró bajo un monorepo modular versionado en GitHub (`secure-donations-2026`). Cada integrante asumió un rol de especialización y desarrolló sus funcionalidades en ramas de características independientes con autoría verificable en el registro de commits:
 
@@ -458,11 +473,25 @@ El proyecto se estructuró bajo un monorepo modular versionado en GitHub (`secur
   caption: [Distribución de roles, módulos técnicos y responsabilidades entre los 4 integrantes del equipo.]
 )
 
-#codly(header: [Comando — Verificación de Autoría y Ramas en Git])
-```bash
-git log --graph --pretty=format:'%h - %an (%ar): %s' -n 10
-```
+== Estructura Modular del Monorepo
+Para garantizar separación de responsabilidades y trazabilidad completa:
 
+#table(
+  columns: (1.3fr, 1.5fr, 2.2fr),
+  fill: (col, row) => if row == 0 { c-primary.lighten(90%) } else if calc.even(row) { c-surface } else { white },
+  stroke: 0.5pt + c-border,
+  inset: (x: 5pt, y: 4.5pt),
+  table.header(
+    [*Módulo / Directorio*], [*Tecnología Principal*], [*Responsabilidad y Contenido*]
+  ),
+  [`template.yaml`], [AWS SAM / CloudFormation], [Definición declarativa de toda la infraestructura (Cognito, API Gateway, DynamoDB, Lambdas e IAM).],
+  [`backend/src/`], [Node.js 24 + TypeScript], [9 funciones Lambda, PDP (`auth/pdp.ts`), validaciones Zod e idempotencia DynamoDB.],
+  [`frontend/src/`], [React 19 + Tailwind CSS + Vite], [Vistas SPA, cliente OIDC con PKCE, `Storage Purge Guard` y tokens volátiles en memoria.],
+  [`tests/`], [Node.js Test Runner + Vitest], [Suite E2E automatizada (T01 a T14), pruebas de concurrencia masiva y runner individual.],
+  [`informe/`], [Typst 0.15.1 + CeTZ], [Documentación técnica reproducible, diagramas vectoriales nativos y evidencias fotográficas.]
+)
+
+== Integración Continua (GitHub Actions)
 #grid(
   columns: (1fr, 1fr),
   gutter: 10pt,
@@ -484,18 +513,32 @@ El flujo de integración continua (`.github/workflows/ci.yml`) evalúa automáti
 5. Auditoría de seguridad de dependencias npm (`npm audit --audit-level=high`).
 
 // =========================================================================
-// 5. IMPLEMENTACIÓN TÉCNICA DE CONTROLES CRÍTICOS
+// 5. IMPLEMENTACIÓN DE CONTROLES CRÍTICOS
 // =========================================================================
-= Implementación Técnica de Controles Críticos & Frontend SPA
+= 5. Implementación de Controles Críticos
 
-== Autenticación OIDC con PKCE y Tokens en Memoria (RNF-HU-11)
-La aplicación cliente SPA (React 19 + Vite + Tailwind CSS) implementa el flujo estándar *OAuth 2.0 Authorization Code con PKCE*. Para neutralizar por diseño los vectores de ataque de Cross-Site Scripting (XSS) y robo de credenciales:
-- Los tokens JWT (Access Token y Refresh Token) se almacenan *exclusivamente en memoria volátil* de la aplicación (React Context).
-- Se implementó un componente centinela (*Storage Purge Guard*) que monitorea e higieniza continuamente `localStorage` y `sessionStorage`, purgando cualquier llave residual.
-- La validez del token de acceso se configuró estrictamente en *15 minutos*.
+== Autorización en el Backend: Policy Decision Point (PDP)
+Bajo Zero Trust, la aplicación desconfía por completo de cualquier parámetro de identidad enviado en el cuerpo de la solicitud (prevención de OWASP API1:2023 - BOLA). En el backend ([`backend/src/auth/pdp.ts`](file:///home/vlad/tmp/lab04/backend/src/auth/pdp.ts)), la función extrae el `sub` directamente del contexto criptográfico inyectado por el PEP y verifica la propiedad del recurso:
 
-== Banner de Advertencia Académica y Prevención BOLA
-En toda la interfaz de usuario se mantiene visible un banner institucional inmutable de advertencia: *«Simulación académica: no se ha realizado ningún cobro real»*. Asimismo, en las vistas privadas de historial (`/donations/me`), el frontend únicamente envía el token de portador; la función Lambda PDP en el backend extrae el claim criptográfico `sub` para consultar exclusivamente las donaciones asociadas a dicho identificador, imposibilitando ataques de asignación masiva o BOLA.
+#codly(header: [TypeScript — Módulo PDP: Extracción de Claims Criptográficos y Control de Propiedad])
+```typescript
+export function extractAuthContext(event: APIGatewayProxyEventV2): AuthContext {
+  const claims = (event.requestContext as any)?.authorizer?.jwt?.claims;
+  if (!claims || !claims.sub) {
+    throw new HttpError(401, 'UNAUTHORIZED', 'Missing or invalid authentication token');
+  }
+  return {
+    sub: claims.sub,
+    groups: Array.isArray(claims['cognito:groups']) ? claims['cognito:groups'] : [],
+  };
+}
+
+export function assertOwnership(callerSub: string, resourceOwnerSub: string): void {
+  if (callerSub !== resourceOwnerSub) {
+    throw new HttpError(403, 'FORBIDDEN', 'Acceso denegado: no es propietario de este recurso');
+  }
+}
+```
 
 == Idempotencia Atómica con TransactWriteItems (RNF-HU-04)
 Para prevenir el doble aporte financiero o condiciones de carrera ante desconexiones de red, la creación de donaciones ejecuta una transacción atómica coordinada en DynamoDB:
@@ -536,12 +579,29 @@ await ddb.send(new TransactWriteCommand({
 
 Si la clave UUID ya existe con el mismo hash SHA-256 del payload, se retorna la respuesta previa en caché (`HTTP 201`). Si el payload difiere, se rechaza inmediatamente con `HTTP 409 Conflict`.
 
+== Seguridad en el Cliente SPA: Tokens en Memoria y Storage Purge Guard (RNF-HU-11)
+La aplicación SPA (React 19 + Tailwind CSS) implementa el flujo estándar *OAuth 2.0 Authorization Code con PKCE*. Para neutralizar por diseño los vectores de ataque de Cross-Site Scripting (XSS) y robo de credenciales:
+- Los tokens JWT (Access y Refresh) se almacenan *exclusivamente en memoria volátil* de JavaScript (React Context).
+- Un componente centinela (*Storage Purge Guard*) purga periódicamente `localStorage` y `sessionStorage`, impidiendo la persistencia en disco del navegador:
+
+#codly(header: [TypeScript — Centinela Storage Purge Guard contra ataques XSS])
+```typescript
+const sensitiveKeys = ['accessToken', 'idToken', 'refreshToken', 'jwt', 'auth'];
+for (const k of sensitiveKeys) {
+  if (localStorage.getItem(k) !== null) {
+    console.warn(`[Zero Trust Guard] Purged token from localStorage: ${k}`);
+    localStorage.removeItem(k);
+  }
+}
+```
+
 == Ciclo de Vida y Limitación de Revocación de Tokens JWT (CA-03.3, CA-03.4)
 Siguiendo los lineamientos de diseño de *Amazon API Gateway HTTP API v2* y *Amazon Cognito*:
 - *Validación Local en el PEP:* El JWT Authorizer de API Gateway valida criptográficamente la firma RS256 contra el JWKS público, el emisor (`iss`), la audiencia/client ID y la fecha de expiración (`exp`) *de forma local sin invocar a Cognito por cada petición* para garantizar baja latencia ($< 15$ ms).
 - *Limitación Demostrada de Revocación:* Como API Gateway no consulta activamente la lista de revocaciones en tiempo real, un *Access Token* revocado mediante el endpoint `/oauth2/revoke` continúa siendo válido en el PEP hasta su fecha programada de expiración.
 - *Mitigación Zero Trust:* Para mitigar esta ventana de exposición y satisfacer el principio 3 de NIST SP 800-207, la vigencia del *Access Token* se configuró estrictamente en un máximo de *15 minutos* (`AccessTokenValidity: 15`). Adicionalmente, el *Refresh Token* sí es revocado de forma inmediata en Cognito, impidiendo que el cliente renueve credenciales una vez cerrada la sesión. Esta limitación y su mitigación quedan empíricamente verificadas en la suite de pruebas mediante el escenario *T13* (`T13.1`, `T13.2`, `T13.3`).
 
+== Interfaces de Usuario de la Plataforma
 #grid(
   columns: (1fr, 1fr),
   gutter: 10pt,
@@ -551,7 +611,7 @@ Siguiendo los lineamientos de diseño de *Amazon API Gateway HTTP API v2* y *Ama
   ),
   figure(
     image("screenshots/011-ui_donacion_simulada.png", width: 100%),
-    caption: [Modal de intención de donación con banner de advertencia académica.]
+    caption: [Modal de intención de donación con montos acotados en PEN y sin cobro real.]
   )
 )
 
@@ -594,10 +654,17 @@ Siguiendo los lineamientos de diseño de *Amazon API Gateway HTTP API v2* y *Ama
   )
 )
 
+== Medición Experimental de Rendimiento y Accesibilidad
+- *Rendimiento de Backend (RNF-HU-05):* Se ejecutaron 20 peticiones consecutivas de medición sobre `GET /v1/projects` en vivo:
+  - Latencia mediana (p50): *222 ms*.
+  - Latencia percentil 95 (p95): *307 ms*.
+  - Cumplimiento: Supera ampliamente la exigencia de p95 $<= 1,500$ ms estipulada en `requirements.md` (CA-NF05.1).
+- *Accesibilidad y Usabilidad (RNF-HU-06):* Conforme a los criterios WCAG 2.2 AA aplicables, se verificó contraste cromático sobre botones de acción, foco visible para navegación asistida por teclado, etiquetas semánticas (`aria-label`, landmarks `main`, `nav`, `aside`) y adaptabilidad fluida a viewports móviles de 375 px.
+
 // =========================================================================
-// 6. VERIFICACIÓN DE SEGURIDAD Y PRUEBAS NEGATIVAS (T01 - T14)
+// 6. VERIFICACIÓN EXPERIMENTAL (T01 A T14)
 // =========================================================================
-= Verificación de Seguridad, Pruebas Negativas y Métricas Reales
+= 6. Verificación Experimental y Suite de Pruebas (T01 a T14)
 
 == Consolidado Global de Métricas de Verificación
 La plataforma fue sometida a una rigurosa suite de pruebas automatizadas multicapa que evalúa la totalidad de los criterios de aceptación y vectores adversarios:
@@ -611,11 +678,11 @@ La plataforma fue sometida a una rigurosa suite de pruebas automatizadas multica
     [*Batería de Pruebas / Capa Evaluada*], [*Herramienta / Harness*], [*Casos*], [*Fallos*], [*Efectividad*]
   ),
   [Backend Unit Tests (Zod, PDP, Idempotency)], [Vitest v3.2.7], [83], [0], [*100% PASS*],
-  [Frontend Unit Tests (Auth, MFA, Purge Guard)], [Vitest + React Testing Library], [23], [0], [*100% PASS*],
+  [Frontend Unit Tests (Auth, MFA, Purge Guard)], [Vitest + React Testing Library], [21], [0], [*100% PASS*],
   [E2E Integration Opaque-Box (Tiers 1-4)], [Node.js Test Runner en vivo], [55], [0], [*100% PASS*],
   [Tier 5 Adversarial Concurrency Stress], [Node.js Concurrency Harness], [5], [0], [*100% PASS*],
   [Adversarial Auth & Scope Challenger Probe], [Cognito & API Gateway Probe], [30], [0], [*100% PASS*],
-  [*TOTAL CONSOLIDADO VERIFICADO*], [*Suite Completa Automatizada*], [*196*], [*0*], [*100% PASS*]
+  [*TOTAL CONSOLIDADO VERIFICADO*], [*Suite Completa Automatizada*], [*194*], [*0*], [*100% PASS*]
 )
 
 == Matriz de Casos de Prueba de Aceptación (T01 a T14)
@@ -645,6 +712,9 @@ A continuación se detalla la verificación empírica de los 14 escenarios de pr
   [T14], [Usuario privilegiado inicia sesión sin segundo factor (CA-11.2)], [Desafío SOFTWARE_TOKEN_MFA], [Figura: Prueba T14]
 )
 
+=== Grupo 1: Superficie Pública y Bloqueo Perimetral (T01 y T02)
+Se verifica el aislamiento del catálogo público (excluyendo estados `BORRADOR`) y la acción del *Policy Enforcement Point (PEP)* en API Gateway HTTP API v2, denegando de inmediato con `HTTP 401 Unauthorized` cualquier petición a rutas protegidas antes de consumir cómputo Lambda:
+
 #grid(
   columns: (1fr, 1fr),
   gutter: 10pt,
@@ -658,6 +728,12 @@ A continuación se detalla la verificación empírica de los 14 escenarios de pr
   )
 )
 
+=== Grupo 2: Control de Acceso RBAC, Anti-BOLA y Scopes OAuth (T03, T09, T11, T12)
+Demostración de que la identidad y los permisos se evalúan estrictamente por recurso:
+- *T03 y T12 (Segregación SoD):* El rol `DONANTE` no puede crear proyectos (`HTTP 403`), y el rol `GESTOR` no puede acceder al historial privado de donantes ni a la auditoría.
+- *T09 (Mitigación BOLA/IDOR):* Al extraer el `sub` criptográfico del JWT en el PDP, un donante que intente confirmar o leer donaciones ajenas es bloqueado con `403 Forbidden`.
+- *T11 (Defensa de Scopes):* El uso de ID Tokens o tokens con firmas alteradas es rechazado por el PEP por carecer de los custom scopes OAuth autorizados (`api/donations.write`, etc.).
+
 #grid(
   columns: (1fr, 1fr),
   gutter: 10pt,
@@ -666,47 +742,8 @@ A continuación se detalla la verificación empírica de los 14 escenarios de pr
     caption: [Prueba T03: Rechazo HTTP 403 Forbidden a rol DONANTE al intentar crear/publicar proyectos.]
   ),
   figure(
-    image("screenshots/tests/test-T04.png", width: 100%),
-    caption: [Prueba T04: Validación Zod de montos inválidos (0, negativos, decimales) con 400 Bad Request.]
-  )
-)
-
-#grid(
-  columns: (1fr, 1fr),
-  gutter: 10pt,
-  figure(
-    image("screenshots/tests/test-T05.png", width: 100%),
-    caption: [Prueba T05: Registro exitoso de intención válida con clave de idempotencia (HTTP 201 Created).]
-  ),
-  figure(
-    image("screenshots/tests/test-T06.png", width: 100%),
-    caption: [Prueba T06: Idempotencia atómica retornando resultado en caché ante reintento con payload idéntico.]
-  )
-)
-
-#grid(
-  columns: (1fr, 1fr),
-  gutter: 10pt,
-  figure(
-    image("screenshots/tests/test-T07.png", width: 100%),
-    caption: [Prueba T07: Detección de colisión de clave de idempotencia con payload alterado (HTTP 409 Conflict).]
-  ),
-  figure(
-    image("screenshots/tests/test-T08.png", width: 100%),
-    caption: [Prueba T08: Concurrencia masiva (10 llamadas paralelas: exactamente 1x 200 OK y 9x 409 Conflict).]
-  )
-)
-
-#grid(
-  columns: (1fr, 1fr),
-  gutter: 10pt,
-  figure(
     image("screenshots/tests/test-T09.png", width: 100%),
     caption: [Prueba T09: Mitigación efectiva de ataque BOLA / IDOR al intentar manipular donaciones ajenas.]
-  ),
-  figure(
-    image("screenshots/tests/test-T10.png", width: 100%),
-    caption: [Prueba T10: Mínimo privilegio IAM con denegación explícita de mutación en funciones de lectura.]
   )
 )
 
@@ -723,23 +760,75 @@ A continuación se detalla la verificación empírica de los 14 escenarios de pr
   )
 )
 
+=== Grupo 3: Integridad de Entrada, Idempotencia y Concurrencia (T04, T05, T06, T07, T08)
+Verificación de integridad transaccional y protección contra condiciones de carrera:
+- *T04 y T05:* Validación estricta con esquemas Zod (montos negativos, cero o decimales rechazados con `400 Bad Request`) e inserción válida con `201 Created`.
+- *T06 y T07:* Reintentos con la misma clave `Idempotency-Key` y payload idéntico devuelven el registro en caché sin duplicar; payloads modificados son bloqueados con `HTTP 409 Conflict`.
+- *T08:* Ráfaga de 10 peticiones simultáneas sobre la misma donación: `TransactWriteItems` garantiza exactamente 1 respuesta exitosa (`200 OK`) y 9 rechazos (`409 Conflict`).
+
 #grid(
   columns: (1fr, 1fr),
   gutter: 10pt,
   figure(
-    image("screenshots/tests/test-T13.png", width: 100%),
-    caption: [Prueba T13: Ciclo de vida y revocación OAuth: Tokens expirados o revocados rechazados por API Gateway.]
+    image("screenshots/tests/test-T04.png", width: 100%),
+    caption: [Prueba T04: Validación Zod de montos inválidos (0, negativos, decimales) con 400 Bad Request.]
   ),
   figure(
-    image("screenshots/tests/test-T14.png", width: 100%),
-    caption: [Prueba T14: Obligatoriedad de MFA TOTP: Roles privilegiados sin segundo factor no obtienen tokens.]
+    image("screenshots/tests/test-T05.png", width: 100%),
+    caption: [Prueba T05: Registro exitoso de intención válida con clave de idempotencia (HTTP 201 Created).]
   )
 )
 
+#grid(
+  columns: (1fr, 1fr),
+  gutter: 10pt,
+  figure(
+    image("screenshots/tests/test-T06.png", width: 100%),
+    caption: [Prueba T06: Idempotencia atómica retornando resultado en caché ante reintento con payload idéntico.]
+  ),
+  figure(
+    image("screenshots/tests/test-T07.png", width: 100%),
+    caption: [Prueba T07: Detección de colisión de clave de idempotencia con payload alterado (HTTP 409 Conflict).]
+  )
+)
+
+#align(center)[
+  #figure(
+    image("screenshots/tests/test-T08.png", width: 68%),
+    caption: [Prueba T08: Concurrencia masiva (10 llamadas paralelas: exactamente 1x 200 OK y 9x 409 Conflict).]
+  )
+]
+
+=== Grupo 4: Privilegio IAM, Sesión y Segundo Factor (T10, T13, T14)
+Comprobación de controles de gobierno y autenticación robusta:
+- *T10:* Simulación de IAM Policy Simulator certificando que la Lambda `ListProjects` tiene prohibida cualquier mutación (`PutItem`, `UpdateItem`, `DeleteItem`) con `implicitDeny`.
+- *T13:* Expiración de Access Tokens en $\le 15$ min y revocación inmediata de Refresh Tokens mediante `/oauth2/revoke`.
+- *T14:* Bloqueo de inicio de sesión para `GESTOR` y `AUDITOR` si no se resuelve el desafío MFA TOTP (RFC 6238).
+
+#grid(
+  columns: (1fr, 1fr),
+  gutter: 10pt,
+  figure(
+    image("screenshots/tests/test-T10.png", width: 100%),
+    caption: [Prueba T10: Mínimo privilegio IAM con denegación explícita de mutación en funciones de lectura.]
+  ),
+  figure(
+    image("screenshots/tests/test-T13.png", width: 100%),
+    caption: [Prueba T13: Ciclo de vida y revocación OAuth: Tokens expirados o revocados rechazados por API Gateway.]
+  )
+)
+
+#align(center)[
+  #figure(
+    image("screenshots/tests/test-T14.png", width: 68%),
+    caption: [Prueba T14: Obligatoriedad de MFA TOTP: Roles privilegiados sin segundo factor no obtienen tokens.]
+  )
+]
+
 // =========================================================================
-// 7. OBSERVABILIDAD, AUDITORÍA Y CUMPLIMIENTO NORMATIVO
+// 7. OBSERVABILIDAD, AUDITORÍA Y CUMPLIMIENTO
 // =========================================================================
-= Observabilidad, Declaración de IA y Conclusiones
+= 7. Observabilidad, Auditoría y Cumplimiento Normativo
 
 == Observabilidad sin Fuga de Secretos (RNF-HU-07)
 En estricto apego al principio de confidencialidad, las funciones Lambda emiten eventos de telemetría estructurados en JSON hacia CloudWatch Logs, incorporando `requestId`, acción, código HTTP y latencia, sanitizando rigurosamente tokens JWT, firmas criptográficas y parámetros sensibles:
@@ -773,7 +862,11 @@ Siguiendo las directrices éticas y académicas del curso, el uso de herramienta
   [Pruebas Automatizadas], [Antigravity / Gemini 3.8], [Generación de plantillas para casos de prueba. El equipo calibró las aserciones en vivo contra AWS y Zod.]
 )
 
-#pagebreak()
+// =========================================================================
+// 8. CONCLUSIONES Y PLAN DE DESMANTELAMIENTO
+// =========================================================================
+= 8. Conclusiones y Plan de Desmantelamiento
+
 == Conclusiones Técnicas del Proyecto
 A través del ciclo integral de ingeniería y verificación empírica implementado para la plataforma «Fundación AQP-SOLIDARIA», se alcanzaron las siguientes conclusiones fundamentales:
 1. *Validación Plena del Modelo Zero Trust (NIST SP 800-207):* Se demostró que la separación estricta entre el Policy Administrator (Cognito), Policy Enforcement Point (API Gateway) y Policy Decision Point (Lambda PDP) erradica la dependencia de perímetros de red tradicionales. Ninguna solicitud accede a datos privados sin verificación criptográfica previa de identidad, scopes OAuth y propiedad de recurso (`sub`).
